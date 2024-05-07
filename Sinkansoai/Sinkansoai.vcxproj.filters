@@ -15,6 +15,15 @@
     <ClCompile Include="Sources\Windows.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\Engine.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Input.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Timer.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\Windows.h">
@@ -24,6 +33,15 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Sources\PlatformDefinitions.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Engine.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Input.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Timer.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

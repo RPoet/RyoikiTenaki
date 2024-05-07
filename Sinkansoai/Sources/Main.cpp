@@ -1,5 +1,6 @@
 #include "Definitions.h"
 #include "Windows.h"
+#include "Engine.h"
 
 auto APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrecInstace, LPWSTR lpCmdLine, int32 nCmdShow)->int
 {
@@ -11,16 +12,26 @@ auto APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrecInstace, LPWSTR lpCmd
 
 	cout << " Console log test " << endl;
 
-	MSG Out = {};
-	while (WM_QUIT != Out.message) {
 
-		if (PeekMessage(&Out, NULL, 0, 0, PM_REMOVE))
+	MEngine RyoikiTenkai;
+	RyoikiTenkai.Init();
+
+	{
+		MSG Out = {};
+		while (WM_QUIT != Out.message)
 		{
-			TranslateMessage(&Out);
-			DispatchMessage(&Out);
-			continue;
+			RyoikiTenkai.Loop();
+
+			if (PeekMessage(&Out, NULL, 0, 0, PM_REMOVE))
+			{
+				TranslateMessage(&Out);
+				DispatchMessage(&Out);
+				continue;
+			}
 		}
 	}
+
+	RyoikiTenkai.Exit();
 	App.Exit();
 
 }

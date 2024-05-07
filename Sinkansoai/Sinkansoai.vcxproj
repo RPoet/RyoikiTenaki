@@ -19,12 +19,18 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Sources\Engine.cpp" />
+    <ClCompile Include="Sources\Input.cpp" />
     <ClCompile Include="Sources\Main.cpp" />
+    <ClCompile Include="Sources\Timer.cpp" />
     <ClCompile Include="Sources\Windows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\Definitions.h" />
+    <ClInclude Include="Sources\Engine.h" />
+    <ClInclude Include="Sources\Input.h" />
     <ClInclude Include="Sources\PlatformDefinitions.h" />
+    <ClInclude Include="Sources\Timer.h" />
     <ClInclude Include="Sources\Windows.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
