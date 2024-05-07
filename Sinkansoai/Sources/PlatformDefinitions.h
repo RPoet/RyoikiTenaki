@@ -4,7 +4,7 @@
 #include <string>
 using String = std::wstring;
 
-
+#define TEXT(x) L##x
 
 // IOS overriding
 #include <iostream>
@@ -12,3 +12,4 @@ using String = std::wstring;
 #define cout std::cout
 
 #define endl std::endl
+

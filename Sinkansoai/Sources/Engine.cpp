@@ -1,20 +1,26 @@
 #include "Engine.h"
+#include "RenderBackendCommon.h"
 
 void MEngine::Init()
 {
 	Timer.Init();
 	Input.Init();
+
+	InitBackend(TEXT( "D3D12" ));
 }
 
 
 void MEngine::Exit()
 {
 	Input.Exit();
+
+	TeardownBackend();
 }
 
 
 void MEngine::Loop()
 {
+
 	Timer.Tick();
 	Input.Tick();
 

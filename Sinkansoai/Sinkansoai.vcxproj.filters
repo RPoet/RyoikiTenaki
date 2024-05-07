@@ -7,6 +7,12 @@
     <Filter Include="Headers">
       <UniqueIdentifier>{ff3527d2-0b54-4573-bfb6-0c8086e60eeb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="RenderBackend">
+      <UniqueIdentifier>{993c0f1a-3c7c-4104-b6b9-08d86cdbf890}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderBackend\RenderBackendD3D12">
+      <UniqueIdentifier>{c2b1ef6a-7807-43c2-b28b-c6fa83ede732}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Main.cpp">
@@ -23,6 +29,15 @@
     </ClCompile>
     <ClCompile Include="Sources\Timer.cpp">
       <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend.cpp">
+      <Filter>RenderBackend</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackendD3D12\d3dx12.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackendD3D12\RenderBackendD3D12.cpp">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -43,6 +58,21 @@
     </ClInclude>
     <ClInclude Include="Sources\Timer.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend.h">
+      <Filter>RenderBackend</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackendCommon.h">
+      <Filter>RenderBackend</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackendD3D12\RenderBackendD3D12.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackendD3D12\RenderBackendD3D12Common.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackendD3D12\DirectXHelper.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
