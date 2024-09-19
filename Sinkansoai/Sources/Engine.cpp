@@ -1,18 +1,27 @@
 #include "Engine.h"
+#include "Module.h"
 #include "RenderBackendCommon.h"
+
+#include "Timer.h"
+#include "Input.h"
 
 void MEngine::Init()
 {
-	Timer.Init();
-	Input.Init();
-
 	InitBackend(TEXT( "D3D12" ));
+
+	for (int32 i = 0; i < Modules.size(); ++i)
+	{
+		Modules[i]->Init();
+	}
 }
 
 
 void MEngine::Exit()
 {
-	Input.Exit();
+	for (int32 i = 0; i < Modules.size(); ++i)
+	{
+		Modules[i]->Teardown();
+	}
 
 	TeardownBackend();
 }
@@ -20,11 +29,12 @@ void MEngine::Exit()
 
 void MEngine::Loop()
 {
+	for (int32 i = 0; i < Modules.size(); ++i)
+	{
+		Modules[i]->Update();
+	}
 
-	Timer.Tick();
-	Input.Tick();
-
-	DeltaTime = Timer.GetDelta();
+	DeltaTime = MTimer::Get().GetDelta();
 
 
 	static float AccumulatedTime = 0;
@@ -34,11 +44,14 @@ void MEngine::Loop()
 
 	for (int i = 0; i < 256; ++i)
 	{
-		if (Input.IsPressed(i))
+		if (MInput::Get().IsPressed(i))
 		{
 			cout << (char)i << " is pressed " << endl;
 		}
 	}
-
 }
 
+void MEngine::RegisterModule(MModuleBase* Module)
+{
+	Modules.push_back(Module);
+}

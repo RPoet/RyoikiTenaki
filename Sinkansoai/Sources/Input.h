@@ -1,8 +1,10 @@
 #pragma once
-#include "Definitions.h"
+#include "Module.h"
 
-class MInput
+class MInput: public MModuleBase
 {
+	MODULE_CLASS_DECORATOR(MInput)
+
 private:
 	enum 
 	{ 
@@ -12,12 +14,12 @@ private:
 		KEY_DOWN_CONT
 	};
 
-	int Key[256];
+	int32 Key[256]{};
 public:
 
-	void Init();
-	void Exit();
-	void Tick();
+	virtual void Init() override;
+	virtual void Teardown() override;
+	virtual void Update() override;
 
 	inline bool IsPressed(int InKey)
 	{

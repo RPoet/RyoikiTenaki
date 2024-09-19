@@ -1,20 +1,23 @@
 #pragma once
+#include <vector>
+#include "Singleton.h"
 #include "Definitions.h"
-#include "Timer.h"
-#include "Input.h"
 
-class MEngine
+class MModuleBase;
+
+class MEngine : public Singleton<MEngine>
 {
 private:
-	MTimer Timer;
-	MInput Input;
-
+	vector<MModuleBase*> Modules;
 
 	float DeltaTime;
+
 public:
 
 	void Init();
 	void Exit();
-
 	void Loop();
+
+
+	void RegisterModule(MModuleBase* Module);
 };

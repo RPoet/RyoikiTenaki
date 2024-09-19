@@ -1,17 +1,23 @@
 #include "Timer.h"
+#include "Engine.h"
+
+IMPLEMENT_MODULE(MTimer)
 
 void MTimer::Init()
 {
+	Super::Init();
+
 	CurrentTime = std::chrono::high_resolution_clock::now();
 	PreviousTime = std::chrono::high_resolution_clock::now();
 }
 
 
-void MTimer::Exit()
+void MTimer::Teardown()
 {
+	Super::Teardown();
 }
 
-void MTimer::Tick()
+void MTimer::Update()
 {
 	CurrentTime = std::chrono::high_resolution_clock::now();
 	DeltaTime = (CurrentTime - PreviousTime);

@@ -19,9 +19,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Sources\Component.cpp" />
     <ClCompile Include="Sources\Engine.cpp" />
     <ClCompile Include="Sources\Input.cpp" />
     <ClCompile Include="Sources\Main.cpp" />
+    <ClCompile Include="Sources\Module.cpp" />
+    <ClCompile Include="Sources\ObjectBase.cpp" />
     <ClCompile Include="Sources\RenderBackend.cpp" />
     <ClCompile Include="Sources\RenderBackendD3D12\d3dx12.h" />
     <ClCompile Include="Sources\RenderBackendD3D12\RenderBackendD3D12.cpp" />
@@ -29,15 +32,19 @@
     <ClCompile Include="Sources\Windows.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Sources\Component.h" />
     <ClInclude Include="Sources\Definitions.h" />
     <ClInclude Include="Sources\Engine.h" />
     <ClInclude Include="Sources\Input.h" />
+    <ClInclude Include="Sources\Module.h" />
+    <ClInclude Include="Sources\ObjectBase.h" />
     <ClInclude Include="Sources\PlatformDefinitions.h" />
     <ClInclude Include="Sources\RenderBackend.h" />
     <ClInclude Include="Sources\RenderBackendCommon.h" />
     <ClInclude Include="Sources\RenderBackendD3D12\DirectXHelper.h" />
     <ClInclude Include="Sources\RenderBackendD3D12\RenderBackendD3D12.h" />
     <ClInclude Include="Sources\RenderBackendD3D12\RenderBackendD3D12Common.h" />
+    <ClInclude Include="Sources\Singleton.h" />
     <ClInclude Include="Sources\Timer.h" />
     <ClInclude Include="Sources\Windows.h" />
   </ItemGroup>

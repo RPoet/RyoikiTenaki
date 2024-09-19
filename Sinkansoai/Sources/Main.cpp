@@ -12,15 +12,14 @@ auto APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrecInstace, LPWSTR lpCmd
 
 	cout << " Console log test " << endl;
 
-
-	MEngine RyoikiTenkai;
-	RyoikiTenkai.Init();
+	MEngine& Engine = MEngine::Get();
+	Engine.Init();
 
 	{
 		MSG Out = {};
 		while (WM_QUIT != Out.message)
 		{
-			RyoikiTenkai.Loop();
+			Engine.Loop();
 
 			if (PeekMessage(&Out, NULL, 0, 0, PM_REMOVE))
 			{
@@ -31,7 +30,7 @@ auto APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrecInstace, LPWSTR lpCmd
 		}
 	}
 
-	RyoikiTenkai.Exit();
+	Engine.Exit();
 	App.Exit();
 
 }

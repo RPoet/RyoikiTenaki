@@ -1,21 +1,25 @@
 #include <windows.h>
 #include "Input.h"
 
+IMPLEMENT_MODULE(MInput)
+
 void MInput::Init()
 {
-	for (int i = 0; i < 256; ++i)
+	Super::Init();
+
+	for (int32 i = 0; i < 256; ++i)
 	{
 		Key[i] = KEY_UP;
 	}
 }
 
 
-void MInput::Tick()
+void MInput::Update()
 {
-	for (int i = 0; i < 256; i++)
+	for (int32 i = 0; i < 256; i++)
 	{
 		bool bKeyDown = GetAsyncKeyState(i) & 0x8000;
-		int& CurrentKey = Key[i];
+		int32& CurrentKey = Key[i];
 		if (CurrentKey == KEY_UP_CONT)
 		{
 			if (bKeyDown)
@@ -68,9 +72,11 @@ void MInput::Tick()
 }
 
 
-void MInput::Exit()
+void MInput::Teardown()
 {
-	for (int i = 0; i < 256; ++i)
+	Super::Teardown();
+
+	for (int32 i = 0; i < 256; ++i)
 	{
 		Key[i] = KEY_UP;
 	}

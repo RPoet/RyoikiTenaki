@@ -39,6 +39,15 @@
     <ClCompile Include="Sources\RenderBackendD3D12\RenderBackendD3D12.cpp">
       <Filter>RenderBackend\RenderBackendD3D12</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\Component.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\ObjectBase.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Module.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\Windows.h">
@@ -73,6 +82,18 @@
     </ClInclude>
     <ClInclude Include="Sources\RenderBackendD3D12\DirectXHelper.h">
       <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Component.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ObjectBase.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Module.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Singleton.h">
+      <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

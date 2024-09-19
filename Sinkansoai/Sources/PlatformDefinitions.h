@@ -4,6 +4,12 @@
 #include <string>
 using String = std::wstring;
 
+
+#include <vector>
+template<class T> using vector = std::vector<T>;
+
+#include <assert.h>
+
 #define TEXT(x) L##x
 
 // IOS overriding

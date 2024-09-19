@@ -1,19 +1,25 @@
 #pragma once
 #include <chrono>
-#include "Definitions.h"
+#include "Module.h"
 
-class MTimer
+class MTimer : public MModuleBase
 {
+	MODULE_CLASS_DECORATOR(MTimer)
+
 private:
 	// Refactor as platform specific timer
-	std::chrono::time_point<std::chrono::high_resolution_clock> CurrentTime;
-	std::chrono::time_point<std::chrono::high_resolution_clock> PreviousTime;
-	std::chrono::duration<float> DeltaTime;
+	std::chrono::time_point<std::chrono::high_resolution_clock> CurrentTime{};
+	std::chrono::time_point<std::chrono::high_resolution_clock> PreviousTime{};
+	std::chrono::duration<float> DeltaTime{};
 
 public:
-	void Init();
-	void Exit();
-	void Tick();
+
+	virtual void Init() override;
+
+	virtual void Teardown() override;
+
+	virtual void Update() override;
 
 	float GetDelta() const { return DeltaTime.count(); }
 };
+
