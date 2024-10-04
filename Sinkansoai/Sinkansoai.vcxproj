@@ -22,20 +22,27 @@
     <ClCompile Include="Sources\Component.cpp" />
     <ClCompile Include="Sources\Engine.cpp" />
     <ClCompile Include="Sources\Input.cpp" />
+    <ClCompile Include="Sources\Launcher.cpp" />
     <ClCompile Include="Sources\Main.cpp" />
     <ClCompile Include="Sources\Module.cpp" />
     <ClCompile Include="Sources\ObjectBase.cpp" />
     <ClCompile Include="Sources\RenderBackend.cpp" />
     <ClCompile Include="Sources\RenderBackendD3D12\d3dx12.h" />
     <ClCompile Include="Sources\RenderBackendD3D12\RenderBackendD3D12.cpp" />
+    <ClCompile Include="Sources\RenderCommandList.cpp" />
+    <ClCompile Include="Sources\Scene.cpp" />
+    <ClCompile Include="Sources\Tasks\TaskSystem.cpp" />
     <ClCompile Include="Sources\Timer.cpp" />
     <ClCompile Include="Sources\Windows.cpp" />
+    <ClCompile Include="Sources\World.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Sources\Algorithm.h" />
     <ClInclude Include="Sources\Component.h" />
     <ClInclude Include="Sources\Definitions.h" />
     <ClInclude Include="Sources\Engine.h" />
     <ClInclude Include="Sources\Input.h" />
+    <ClInclude Include="Sources\Launcher.h" />
     <ClInclude Include="Sources\Module.h" />
     <ClInclude Include="Sources\ObjectBase.h" />
     <ClInclude Include="Sources\PlatformDefinitions.h" />
@@ -44,9 +51,15 @@
     <ClInclude Include="Sources\RenderBackendD3D12\DirectXHelper.h" />
     <ClInclude Include="Sources\RenderBackendD3D12\RenderBackendD3D12.h" />
     <ClInclude Include="Sources\RenderBackendD3D12\RenderBackendD3D12Common.h" />
+    <ClInclude Include="Sources\RenderCommandList.h" />
+    <ClInclude Include="Sources\Scene.h" />
     <ClInclude Include="Sources\Singleton.h" />
+    <ClInclude Include="Sources\Tasks\TaskQueue.h" />
+    <ClInclude Include="Sources\Tasks\TaskQueue.hpp" />
+    <ClInclude Include="Sources\Tasks\TaskSystem.h" />
     <ClInclude Include="Sources\Timer.h" />
     <ClInclude Include="Sources\Windows.h" />
+    <ClInclude Include="Sources\World.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

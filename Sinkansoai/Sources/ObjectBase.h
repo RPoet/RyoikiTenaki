@@ -32,4 +32,8 @@ public:
 	virtual void RegisterToWorld() {};
 
 	virtual void Destroy() {};
+
+
+	// need to serialize
+	virtual void Serialize() {};
 };

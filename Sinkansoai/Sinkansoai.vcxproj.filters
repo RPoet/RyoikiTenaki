@@ -13,6 +13,9 @@
     <Filter Include="RenderBackend\RenderBackendD3D12">
       <UniqueIdentifier>{c2b1ef6a-7807-43c2-b28b-c6fa83ede732}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Tasks">
+      <UniqueIdentifier>{d9acebef-87e6-42bc-bb2a-976425842d4f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Main.cpp">
@@ -47,6 +50,21 @@
     </ClCompile>
     <ClCompile Include="Sources\Module.cpp">
       <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Launcher.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\World.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Scene.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderCommandList.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Tasks\TaskSystem.cpp">
+      <Filter>Tasks</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -94,6 +112,30 @@
     </ClInclude>
     <ClInclude Include="Sources\Singleton.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Launcher.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Algorithm.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\World.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Scene.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderCommandList.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Tasks\TaskQueue.h">
+      <Filter>Tasks</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Tasks\TaskSystem.h">
+      <Filter>Tasks</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Tasks\TaskQueue.hpp">
+      <Filter>Tasks</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

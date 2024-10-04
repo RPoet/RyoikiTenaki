@@ -14,6 +14,15 @@ protected:
 
 	int32 bIsInitialized : 1;
 
+	enum class EModulePriority : int8
+	{
+		EHigh = -1,
+		EMid = 0,
+		ELow = 1
+	};
+
+	EModulePriority Priority{ EModulePriority::ELow };
+
 public:
 
 	MModuleBase();
@@ -30,8 +39,12 @@ public:
 
 	virtual void Update() {};
 
+	EModulePriority GetPriority() const { return Priority; }
+
+	virtual void PrintName() { cout << "DefaultModule" << endl; };
 	void Check()
 	{
 		assert(bIsInitialized);
 	}
+
 };

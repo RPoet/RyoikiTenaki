@@ -17,7 +17,7 @@ auto APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrecInstace, LPWSTR lpCmd
 
 	{
 		MSG Out = {};
-		while (WM_QUIT != Out.message)
+		while (WM_QUIT != Out.message && Engine.Run())
 		{
 			Engine.Loop();
 
@@ -31,6 +31,8 @@ auto APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrecInstace, LPWSTR lpCmd
 	}
 
 	Engine.Exit();
+
+	Sleep(5000);
 	App.Exit();
 
 }

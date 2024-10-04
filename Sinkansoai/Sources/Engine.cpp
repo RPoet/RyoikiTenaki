@@ -1,18 +1,31 @@
 #include "Engine.h"
+#include "Tasks/TaskSystem.h"
 #include "Module.h"
 #include "RenderBackendCommon.h"
 
 #include "Timer.h"
 #include "Input.h"
 
+#include "Algorithm.h"
+
+
 void MEngine::Init()
 {
 	InitBackend(TEXT( "D3D12" ));
-
+	
 	for (int32 i = 0; i < Modules.size(); ++i)
 	{
+		Modules[i]->PrintName();
 		Modules[i]->Init();
 	}
+
+	Sort(Modules.begin(), Modules.end(), [](const MModuleBase* A, const MModuleBase* B)
+	{
+		return A->GetPriority() < B->GetPriority();
+	});
+
+
+	bRun = true;
 }
 
 
@@ -40,16 +53,15 @@ void MEngine::Loop()
 	static float AccumulatedTime = 0;
 	AccumulatedTime+=DeltaTime;
 
-	cout << "Time : " << AccumulatedTime << endl;
-
-	for (int i = 0; i < 256; ++i)
+	if (MInput::Get().IsPressed('Q'))
 	{
-		if (MInput::Get().IsPressed(i))
-		{
-			cout << (char)i << " is pressed " << endl;
-		}
+		bRun = false;
 	}
+
+
+	MTaskSystem::Get().LaunchTasks();
 }
+
 
 void MEngine::RegisterModule(MModuleBase* Module)
 {

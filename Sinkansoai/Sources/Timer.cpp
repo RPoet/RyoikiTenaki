@@ -6,6 +6,11 @@ IMPLEMENT_MODULE(MTimer)
 void MTimer::Init()
 {
 	Super::Init();
+	
+	cout << "Timer Init" << endl;
+
+	// Timer always updated first.
+	Priority = EModulePriority::EHigh;
 
 	CurrentTime = std::chrono::high_resolution_clock::now();
 	PreviousTime = std::chrono::high_resolution_clock::now();

@@ -3,14 +3,17 @@
 #include "Singleton.h"
 #include "Definitions.h"
 
+
 class MModuleBase;
 
 class MEngine : public Singleton<MEngine>
 {
 private:
-	vector<MModuleBase*> Modules;
+	vector<MModuleBase*> Modules{};
 
-	float DeltaTime;
+	float DeltaTime = 0;
+
+	bool bRun = false;
 
 public:
 
@@ -20,4 +23,7 @@ public:
 
 
 	void RegisterModule(MModuleBase* Module);
+
+
+	bool Run() const { return bRun; }
 };
