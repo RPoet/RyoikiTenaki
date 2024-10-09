@@ -24,6 +24,6 @@ int32 TTaskQueue< TCommandType >::Main()
 template< class TCommandType >
 void TTaskQueue< TCommandType >::AddRenderCommand(String&& CommandName, TCommandType&& CommandType)
 {
-	TaskQueue.emplace(std::forward( CommandType ));
+	TaskQueue.emplace(CommandType);
 	CommandNames.emplace(std::move( CommandName ));
 }

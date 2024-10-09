@@ -10,7 +10,7 @@ void MLauncher::Init()
 {
 	Super::Init();
 	cout << "Launcher Init " << endl;
-	WorldGeneration();
+	GenerateWorld();
 }
 
 
@@ -18,7 +18,7 @@ void MLauncher::Teardown()
 {
 	Super::Teardown();
 	cout << "Launcher Teardown " << endl;
-	WorldTeardown();
+	TeardownWorld();
 }
 
 
@@ -32,16 +32,23 @@ void MLauncher::Update()
 	World->Tick(DeltaTime);
 }
 
-
-void MLauncher::WorldGeneration()
+void MLauncher::Serialize()
 {
-	WorldTeardown();
+	if (World)
+	{
+		World->Serialize();
+	}
+}
+
+void MLauncher::GenerateWorld()
+{
+	TeardownWorld();
 
 	World = new MWorld();
 	World->Init();
 }
 
-void MLauncher::WorldTeardown()
+void MLauncher::TeardownWorld()
 {
 	if (World)
 	{

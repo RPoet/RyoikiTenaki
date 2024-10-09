@@ -6,8 +6,8 @@ template<class TCommandType>
 class TTaskQueue
 {
 private:
-	Queue<TCommandType> TaskQueue;
-	Queue<String> CommandNames;
+	queue<TCommandType> TaskQueue;
+	queue<String> CommandNames;
 
 public:
 	TTaskQueue() = default;

@@ -1,6 +1,7 @@
 #pragma once
 #include "Module.h"
 
+// Add mouse movement
 class MInput: public MModuleBase
 {
 	MODULE_CLASS_DECORATOR(MInput)

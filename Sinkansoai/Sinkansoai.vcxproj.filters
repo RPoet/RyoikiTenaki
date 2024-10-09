@@ -16,6 +16,18 @@
     <Filter Include="Tasks">
       <UniqueIdentifier>{d9acebef-87e6-42bc-bb2a-976425842d4f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="EntityComonent">
+      <UniqueIdentifier>{cdea3c54-6b76-40f7-883b-89e6221f2fc0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SceneGraphSystem">
+      <UniqueIdentifier>{4e447bdc-c4b1-4ab7-96b6-a2f38437a773}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Entities">
+      <UniqueIdentifier>{0bf660d5-d8ac-4330-9623-44a3d8be28cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Entities\Components">
+      <UniqueIdentifier>{2e6dee02-b0c3-4ca8-bd40-c7e84fa2e847}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Main.cpp">
@@ -65,6 +77,33 @@
     </ClCompile>
     <ClCompile Include="Sources\Tasks\TaskSystem.cpp">
       <Filter>Tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\EntityComponent\Entity.cpp">
+      <Filter>EntityComonent</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\EntityComponent\EntityManager.cpp">
+      <Filter>EntityComonent</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\EntityComponent\ComponentManger.cpp">
+      <Filter>EntityComonent</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\SceneGraphSystem\Component.cpp">
+      <Filter>SceneGraphSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\SceneGraphSystem\SceneGraphSystem.cpp">
+      <Filter>SceneGraphSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\SceneGraphSystem\GraphEntity.cpp">
+      <Filter>SceneGraphSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Entities\Components\Transform.cpp">
+      <Filter>Entities\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Entities\Camera.cpp">
+      <Filter>Entities</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Entities\PlaceableEntity.cpp">
+      <Filter>Entities</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -136,6 +175,39 @@
     </ClInclude>
     <ClInclude Include="Sources\Tasks\TaskQueue.hpp">
       <Filter>Tasks</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\EntityComponent\Entity.h">
+      <Filter>EntityComonent</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\EntityComponent\EntityManager.h">
+      <Filter>EntityComonent</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\EntityComponent\ECFCommon.h">
+      <Filter>EntityComonent</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\EntityComponent\ComponentManger.h">
+      <Filter>EntityComonent</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\SceneGraphSystem\Component.h">
+      <Filter>SceneGraphSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\SceneGraphSystem\SceneGraphSystem.h">
+      <Filter>SceneGraphSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\SceneGraphSystem\GraphEntity.h">
+      <Filter>SceneGraphSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Entities\Components\Transform.h">
+      <Filter>Entities\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Entities\Camera.h">
+      <Filter>Entities</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Vector.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Entities\PlaceableEntity.h">
+      <Filter>Entities</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

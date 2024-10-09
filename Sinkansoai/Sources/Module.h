@@ -26,6 +26,7 @@ protected:
 public:
 
 	MModuleBase();
+	virtual ~MModuleBase() = default;
 
 	virtual void Init()
 	{

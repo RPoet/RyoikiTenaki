@@ -1,7 +1,6 @@
 #pragma once
 #include "Module.h"
 
-
 class MLauncher : public MModuleBase
 {
 	MODULE_CLASS_DECORATOR(MLauncher)
@@ -10,8 +9,10 @@ private:
 	class MWorld* World{ nullptr };
 
 protected:
-	void WorldGeneration();
-	void WorldTeardown();
+	void GenerateWorld();
+
+	void TeardownWorld();
+
 public:
 
 	virtual void Init() override;
@@ -21,5 +22,5 @@ public:
 	virtual void Update() override;
 
 
+	void Serialize();
 };
-
