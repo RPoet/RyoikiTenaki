@@ -1,7 +1,7 @@
 #include "Engine.h"
 #include "Tasks/TaskSystem.h"
 #include "Module.h"
-#include "RenderBackendCommon.h"
+#include "RenderBackend/RenderBackendCommon.h"
 
 #include "Timer.h"
 #include "Input.h"
@@ -11,11 +11,9 @@
 
 void MEngine::Init()
 {
-	InitBackend(TEXT( "D3D12" ));
-	
 	for (int32 i = 0; i < Modules.size(); ++i)
 	{
-		Modules[i]->PrintName();
+		//Modules[i]->PrintName();
 		Modules[i]->Init();
 	}
 
@@ -24,6 +22,8 @@ void MEngine::Init()
 		return A->GetPriority() < B->GetPriority();
 	});
 
+	// Late Intialization to wait for dependency module initialization
+	InitBackend(TEXT("D3D12"));
 
 	bRun = true;
 }

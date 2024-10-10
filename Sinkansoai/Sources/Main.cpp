@@ -2,15 +2,17 @@
 #include "Windows.h"
 #include "Engine.h"
 
+#pragma warning(disable:4996)
+#define START_CONSOLE() {(void)AllocConsole();  (void)freopen("CONOUT$", "w", stdout); (void)freopen("CONIN$", "r", stdin);}
+#define STOP_CONSOLE()  {(void)FreeConsole();}
+
+MStartupParams GStartupParams;
+
 auto APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrecInstace, LPWSTR lpCmdLine, int32 nCmdShow)->int
 {
-	String ClassName(TEXT("Sinkansoai"));
-	String AppNameName(TEXT("Sinkansoai"));
+	GStartupParams = { hInstance, hPrecInstace, lpCmdLine, nCmdShow };
 
-	Window App{};
-	App.Init(hInstance, nCmdShow, ClassName, AppNameName);
-
-	cout << " Console log test " << endl;
+	START_CONSOLE();
 
 	MEngine& Engine = MEngine::Get();
 	Engine.Init();
@@ -33,7 +35,9 @@ auto APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrecInstace, LPWSTR lpCmd
 	Engine.Exit();
 
 	Sleep(5000);
-	App.Exit();
 
+	STOP_CONSOLE();
 }
 
+#undef START_CONSOLE()
+#undef STOP_CONSOLE()

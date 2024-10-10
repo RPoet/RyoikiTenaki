@@ -31,6 +31,12 @@ struct int4
 	int32 W;
 };
 
+struct uint2
+{
+	uint32 X;
+	uint32 Y;
+};
+
 struct uint3
 {
 	uint32 X;

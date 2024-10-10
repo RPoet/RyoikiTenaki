@@ -1,20 +1,22 @@
 #pragma once
 #include "TaskQueue.h"
+#include "../RenderBackend/RenderBackendCommon.h"
 
 template< class TCommandType > 
 int32 TTaskQueue< TCommandType >::Main()
 {
-	RRenderCommandList GlobalCommandList{};
-
 	while (TaskQueue.size() > 0)
 	{
-		auto ExecutionCommandName = CommandNames.front();
+		if (!GBackend)
+		{
+			break;
+		}
 
-		auto Task = TaskQueue.front();
+		//cout << CommandNames.front() << endl;
+		TaskQueue.front()(*GBackend->GetMainCommandList());
+		//cout << CommandNames.front() << endl;
+
 		TaskQueue.pop();
-
-		Task(GlobalCommandList);
-
 		CommandNames.pop();
 	}
 

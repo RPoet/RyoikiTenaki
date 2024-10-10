@@ -28,6 +28,9 @@
     <Filter Include="Entities\Components">
       <UniqueIdentifier>{2e6dee02-b0c3-4ca8-bd40-c7e84fa2e847}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Render">
+      <UniqueIdentifier>{f978d2d6-70c5-4627-a0d2-7f2f256acc6f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Main.cpp">
@@ -45,15 +48,6 @@
     <ClCompile Include="Sources\Timer.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
-    <ClCompile Include="Sources\RenderBackend.cpp">
-      <Filter>RenderBackend</Filter>
-    </ClCompile>
-    <ClCompile Include="Sources\RenderBackendD3D12\d3dx12.h">
-      <Filter>RenderBackend\RenderBackendD3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="Sources\RenderBackendD3D12\RenderBackendD3D12.cpp">
-      <Filter>RenderBackend\RenderBackendD3D12</Filter>
-    </ClCompile>
     <ClCompile Include="Sources\Component.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -67,12 +61,6 @@
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="Sources\World.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="Sources\Scene.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="Sources\RenderCommandList.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="Sources\Tasks\TaskSystem.cpp">
@@ -105,6 +93,24 @@
     <ClCompile Include="Sources\Entities\PlaceableEntity.cpp">
       <Filter>Entities</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\Render\Scene.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Render\Renderer.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderBackend.cpp">
+      <Filter>RenderBackend</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12.cpp">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderCommandList.cpp">
+      <Filter>RenderBackend</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\RenderCommandListD3D12.cpp">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\Windows.h">
@@ -125,21 +131,6 @@
     <ClInclude Include="Sources\Timer.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Sources\RenderBackend.h">
-      <Filter>RenderBackend</Filter>
-    </ClInclude>
-    <ClInclude Include="Sources\RenderBackendCommon.h">
-      <Filter>RenderBackend</Filter>
-    </ClInclude>
-    <ClInclude Include="Sources\RenderBackendD3D12\RenderBackendD3D12.h">
-      <Filter>RenderBackend\RenderBackendD3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="Sources\RenderBackendD3D12\RenderBackendD3D12Common.h">
-      <Filter>RenderBackend\RenderBackendD3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="Sources\RenderBackendD3D12\DirectXHelper.h">
-      <Filter>RenderBackend\RenderBackendD3D12</Filter>
-    </ClInclude>
     <ClInclude Include="Sources\Component.h">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -159,12 +150,6 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Sources\World.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="Sources\Scene.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="Sources\RenderCommandList.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Sources\Tasks\TaskQueue.h">
@@ -208,6 +193,39 @@
     </ClInclude>
     <ClInclude Include="Sources\Entities\PlaceableEntity.h">
       <Filter>Entities</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Render\Renderer.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Render\Scene.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackend.h">
+      <Filter>RenderBackend</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\d3dx12.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\DirectXHelper.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderCommandList.h">
+      <Filter>RenderBackend</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendCommon.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Render\View.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderCommandListD3D12.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12Common.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

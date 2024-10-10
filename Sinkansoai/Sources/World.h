@@ -28,6 +28,8 @@ public:
 
 	void Tick(float DeltaTime);
 
+	void DrawViewport();
+
 	virtual void Serialize();
 };
 

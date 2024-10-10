@@ -1,5 +1,7 @@
 #pragma once
 #include "PlaceableEntity.h"
+#include "../Render/View.h"
+
 
 class MCamera : public MPlaceableEntity
 {
@@ -7,10 +9,10 @@ class MCamera : public MPlaceableEntity
 
 private:
 	float Fov = 60;
+	float MinZ = 0.0001f;
+
 	uint32 Width = 1920;
 	uint32 Height = 1080;
-	
-	float MinZ = 0.0001f;
 
 public:
 	MCamera() = default;
@@ -20,4 +22,19 @@ public:
 	virtual void Register() override;
 	virtual void Destroy() override;
 	virtual void Tick(float DeltaTime) override;
+
+	RViewContext GetViewContext() const
+	{
+		RViewContext Out
+		{
+			Transform.Rotation,
+			Transform.Translation,
+			Fov,
+			MinZ,
+			uint2{Width, Height}
+		};
+
+		return Out;
+	}
+
 };

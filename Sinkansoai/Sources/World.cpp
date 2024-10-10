@@ -1,7 +1,7 @@
 #include "World.h"
-#include "Scene.h"
 #include "Tasks/TaskSystem.h"
 
+#include "Render/Renderer.h"
 
 /*
 * Example Usage of the render system command.
@@ -12,6 +12,7 @@
 		cout << "Scene Init Command" << endl;
 	});
 */
+
 void MWorld::Init()
 {
 	cout << "World Init" << endl;
@@ -24,7 +25,6 @@ void MWorld::Init()
 	Camera.SetExternalObject(true);
 	ObjectSystem.RegisterEntity(&Camera);
 }
-
 
 void MWorld::Teardown()
 {
@@ -45,6 +45,17 @@ void MWorld::Tick(float DeltaTime)
 	ObjectSystem.Tick(DeltaTime);
 }
 
+void MWorld::DrawViewport()
+{
+	MTaskSystem::Get().AddRenderCommand(TEXT("Draw Viewport"),
+		[InCamera = Camera, InScene = Scene](RRenderCommandList& CommandList)
+		{
+			//cout << "Draw Viweport Command body" << endl;
+			RViewContext ViewContext = InCamera.GetViewContext();
+
+			DrawViweport_RT(CommandList, *InScene, ViewContext);
+		});
+}
 
 void MWorld::Serialize()
 {

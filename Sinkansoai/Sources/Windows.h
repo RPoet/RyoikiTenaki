@@ -7,26 +7,26 @@
 #include <stdio.h>
 
 #include "Definitions.h"
-#pragma warning(disable:4996)
-#define START_CONSOLE() {AllocConsole();  freopen("CONOUT$", "w", stdout); freopen("CONIN$", "r", stdin);}
-#define STOP_CONSOLE()  {FreeConsole();}
+#include "Module.h"
 
-
-class Window
+class MWindow : public MModuleBase
 {
+	MODULE_CLASS_DECORATOR(MWindow)
+
 private:
 	HINSTANCE		HandleInstance;
 	WNDCLASSEX		WinClassEx;
 	HWND			HandleWindow;
 	int32			Width, Height;
 
-	String			ClassName;
-	String			AppName;
+	bool Init(const MStartupParams&, const String&, const String&);
 
 public:
-	bool Init(HINSTANCE, int32, String&, String&);
-	bool Exit();
-	void Update();
+
+	virtual void Init() override;
+	virtual void Teardown() override;
+	virtual void Update() override;
+
 	HWND GetHWND() { return  HandleWindow; }
 	HINSTANCE GetHandleInstance() { return  HandleInstance; }
 	int GetWidth() { return  Width; }

@@ -2,6 +2,7 @@
 #include <iostream>
 #include "Windows.h"
 
+IMPLEMENT_MODULE(MWindow)
 
 LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -23,17 +24,18 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 }
 
 
-bool Window::Init(HINSTANCE hInstance, int32 nCmdShow, String& InClassName, String& InAppName)
+bool MWindow::Init(const MStartupParams& StartupParams, const String& InClassName, const String& InAppName)
 {
+	Super::Init();
+
 	RECT ActualDesktop;
 	GetWindowRect(GetDesktopWindow(), &ActualDesktop);
 
 	SetWidth(1920);
 	SetHeight(1100);
 
-	HandleInstance = hInstance;
-	ClassName = (InClassName);
-	AppName = (InAppName);
+	HandleInstance = StartupParams.hInstance;
+
 	WinClassEx.cbSize = sizeof(WNDCLASSEX);
 	WinClassEx.style = CS_HREDRAW | CS_VREDRAW;
 	WinClassEx.lpfnWndProc = WindowProcedure;
@@ -44,14 +46,14 @@ bool Window::Init(HINSTANCE hInstance, int32 nCmdShow, String& InClassName, Stri
 	WinClassEx.hCursor = LoadCursor(NULL, IDC_ARROW);
 	WinClassEx.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	WinClassEx.lpszMenuName = NULL;
-	WinClassEx.lpszClassName = Window::ClassName.c_str();
+	WinClassEx.lpszClassName = InClassName.c_str();
 	WinClassEx.hIconSm = NULL;
 
 	if (!RegisterClassEx(&WinClassEx)) return false;
 
 	HandleWindow = CreateWindowEx(0
-		, ClassName.c_str(),
-		AppName.c_str(),
+		, InClassName.c_str(),
+		InAppName.c_str(),
 		WS_OVERLAPPEDWINDOW, // When full mode WS_POPUP	would be popup
 		CW_USEDEFAULT,       // When full mode 0	would be popup
 		CW_USEDEFAULT,       // When full mode 0  would be popup
@@ -62,27 +64,31 @@ bool Window::Init(HINSTANCE hInstance, int32 nCmdShow, String& InClassName, Stri
 		HandleInstance,
 		nullptr);
 
-	ShowWindow(HandleWindow, nCmdShow);
-
-	START_CONSOLE();
+	ShowWindow(HandleWindow, StartupParams.nCmdShow);
 
 	ShowCursor(true);
 
 	return true;
 }
 
-
-bool Window::Exit()
+void MWindow::Init()
 {
-	::DestroyWindow(GetHWND());
+	const static String ClassName(TEXT("Sinkansoai"));
+	const static String AppNameName(TEXT("Sinkansoai"));
 
-	STOP_CONSOLE();
-	return true;
+	Init(GStartupParams, ClassName, AppNameName);
+
+	cout << "Windows module Init" << endl;
 }
 
 
-void Window::Update()
+void MWindow::Teardown()
 {
+	::DestroyWindow(GetHWND());
+}
 
 
+void MWindow::Update()
+{
+	// nothing to do...
 }

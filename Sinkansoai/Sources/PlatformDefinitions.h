@@ -24,6 +24,7 @@ template<class T> using unordered_set = std::unordered_set<T>;
 
 #include <type_traits>
 
+#include <functional>
 
 // IOS overriding
 #include <iostream>
@@ -41,4 +42,15 @@ using uint16 = unsigned short;
 using int8 = char;
 using uint8 = unsigned char;
 
+#include < windows.h >
 #include "Vector.h"
+
+struct MStartupParams
+{
+	HINSTANCE hInstance;
+	HINSTANCE hPrecInstace;
+	LPWSTR lpCmdLine;
+	int32 nCmdShow;
+};
+
+extern MStartupParams GStartupParams;

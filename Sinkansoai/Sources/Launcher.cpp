@@ -30,6 +30,7 @@ void MLauncher::Update()
 	assert(World && " World was nullptr ");
 
 	World->Tick(DeltaTime);
+	World->DrawViewport();
 }
 
 void MLauncher::Serialize()

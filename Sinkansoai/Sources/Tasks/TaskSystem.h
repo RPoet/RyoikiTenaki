@@ -1,12 +1,13 @@
 #pragma once
 #include "../Singleton.h"
 #include "TaskQueue.h"
+#include "../RenderBackend/RenderCommandList.h"
 
 class MTaskSystem : public Singleton<MTaskSystem>
 {
 private:
 
-	using RenderCommand = void(*)(RRenderCommandList&);
+	using RenderCommand = std::function<void(RRenderCommandList&)>;
 	TTaskQueue<RenderCommand> RenderCommandQueue;
 
 	//using TaskCommand = void(*)(void);

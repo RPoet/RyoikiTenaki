@@ -3,12 +3,12 @@
 #include "Singleton.h"
 #include "Definitions.h"
 
-
 class MModuleBase;
 
 class MEngine : public Singleton<MEngine>
 {
 private:
+
 	vector<MModuleBase*> Modules{};
 
 	float DeltaTime = 0;
