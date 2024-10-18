@@ -8,7 +8,7 @@ class MCamera : public MPlaceableEntity
 	CLASS_DECORATOR(MCamera)
 
 private:
-	float Fov = 60;
+	float FoV = 60;
 	float MinZ = 0.0001f;
 
 	uint32 Width = 1920;
@@ -18,18 +18,24 @@ public:
 	MCamera() = default;
 	virtual ~MCamera() = default;
 
+	void SetFov(float FoV)
+	{
+		this->FoV = FoV;
+	}
+
+	float GetFoV() const { return FoV; }
+
 
 	virtual void Register() override;
 	virtual void Destroy() override;
 	virtual void Tick(float DeltaTime) override;
 
-	RViewContext GetViewContext() const
+	RViewContext GetViewContext()
 	{
 		RViewContext Out
 		{
-			Transform.Rotation,
-			Transform.Translation,
-			Fov,
+			GetTransform().ToMatrix(),
+			FoV,
 			MinZ,
 			uint2{Width, Height}
 		};

@@ -9,6 +9,7 @@
 #pragma comment ( lib, "dxgi.lib")
 
 RRenderBackendD3D12::RRenderBackendD3D12()
+	: DynamicBuffer(*this, TEXT("Global Buffer"))
 {
 	SetBackendName(TEXT("D3D12"));
 }
@@ -28,7 +29,9 @@ void RRenderBackendD3D12::Init()
 	TRefCountPtr<IDXGIFactory4> Factory{};
 	ThrowIfFailed(CreateDXGIFactory2(DxgiFactoryFlags, IID_PPV_ARGS(&Factory)));
 
-	if (HRESULT HR = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device), (void**)&Device) != S_OK)
+
+	HRESULT HR = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device), (void**)&Device);
+	if (HR != S_OK)
 	{
 		ThrowIfFailed(HR);
 		cout << "D3D12 Renderbackend Device Init false" << endl;
@@ -109,9 +112,33 @@ void RRenderBackendD3D12::Init()
 			RTVHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 			RTVHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 			ThrowIfFailed(Device->CreateDescriptorHeap(&RTVHeapDesc, IID_PPV_ARGS(&RTVHeap)));
-			cout << "Descriptor heap creation success" << endl;
+			cout << "Descriptor rtv heap creation success" << endl;
 
 			RTVDescriptorSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+			// Describe and create a constant buffer view (CBV) descriptor heap.
+			// Flags indicate that this descriptor heap can be bound to the pipeline 
+			// and that descriptors contained in it can be referenced by a root table.
+			D3D12_DESCRIPTOR_HEAP_DESC CbvHeapDesc = {};
+			CbvHeapDesc.NumDescriptors = 1;
+			CbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			CbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			ThrowIfFailed(Device->CreateDescriptorHeap(&CbvHeapDesc, IID_PPV_ARGS(&CBVHeap)));
+			cout << "Descriptor cbv heap creation success" << endl;
+
+			CBVSRVUAVDescriptorSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+
+			{
+				DynamicBuffer.Allocate(D3D12MaxConstantBufferSize);
+				CD3DX12_CPU_DESCRIPTOR_HANDLE CBVHandle(CBVHeap->GetCPUDescriptorHandleForHeapStart());
+				auto CBVDesc = DynamicBuffer.GetCBVDesc();
+
+				// Insepct this function
+				Device->CreateConstantBufferView(&CBVDesc, CBVHandle);
+				
+				cout << " Global Dynamic Buffer CBV generation success " << endl;
+			}
 		}
 
 		// Create frame resources.
@@ -132,12 +159,38 @@ void RRenderBackendD3D12::Init()
 
 		// Create an empty root signature.
 		{
-			CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
-			RootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+			D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+
+			// This is the highest version the sample supports. If CheckFeatureSupport succeeds, the HighestVersion returned will not be greater than this.
+			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+
+			if (FAILED(Device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+			{
+				cout << " Root signature 1_1 failed " << endl;
+				featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+			}
+
+			CD3DX12_DESCRIPTOR_RANGE1 Ranges[1];
+			Ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+
+			CD3DX12_ROOT_PARAMETER1 RootParameters[1];
+			RootParameters[0].InitAsDescriptorTable(1, &Ranges[0], D3D12_SHADER_VISIBILITY_VERTEX);
+
+			// Allow input layout and deny uneccessary access to certain pipeline stages.
+			D3D12_ROOT_SIGNATURE_FLAGS RootSignatureFlags =
+				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+
+
+			CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC RootSignatureDesc;
+			RootSignatureDesc.Init_1_1(_countof(RootParameters), RootParameters, 0, nullptr, RootSignatureFlags);
 
 			ComPtr<ID3DBlob> Signature;
 			ComPtr<ID3DBlob> Error;
-			ThrowIfFailed(D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &Error));
+			ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&RootSignatureDesc, featureData.HighestVersion, &Signature, &Error));
 			ThrowIfFailed(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&RootSignature)));
 
 			cout << "Rootsignature creation success" << endl;
@@ -158,10 +211,28 @@ void RRenderBackendD3D12::Init()
 
 
 			ComPtr<ID3DBlob> Error;
-			ThrowIfFailed(D3DCompileFromFile(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &VertexShader, &Error));
+			D3DCompileFromFile(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &VertexShader, &Error);
+
+			if (Error)
+			{
+				cout << (char*)Error->GetBufferPointer() << endl;
+				Error->Release();
 
 
-			ThrowIfFailed(D3DCompileFromFile(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &PixelShader, &Error));
+				ThrowIfFailed(S_FALSE);
+			}
+
+
+			D3DCompileFromFile(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &PixelShader, &Error);
+		
+			if (Error)
+			{
+				cout << (char*)Error->GetBufferPointer() << endl;
+				Error->Release();
+
+
+				ThrowIfFailed(S_FALSE);
+			}
 
 
 			// Define the vertex input layout.
@@ -260,10 +331,7 @@ void RRenderBackendD3D12::Init()
 				ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
 			}
 
-
 			WaitForPreviousFence();
-
-
 			cout << " Test fence creation " << endl;
 		}
 	}
@@ -310,6 +378,13 @@ void RRenderBackendD3D12::FunctionalityTestRender()
 
 	// Set necessary state.
 	CommandList->SetGraphicsRootSignature(RootSignature.Get());
+
+
+	ID3D12DescriptorHeap* Heaps[] = { CBVHeap.Get() };
+	CommandList->SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList->SetGraphicsRootDescriptorTable(0, CBVHeap->GetGPUDescriptorHandleForHeapStart());
+
+
 	CommandList->RSSetViewports(1, &Viewport);
 	CommandList->RSSetScissorRects(1, &ScissorRect);
 

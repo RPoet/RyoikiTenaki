@@ -4,6 +4,7 @@
 #include "../RenderBackend.h"
 #include "RenderBackendD3D12Common.h"
 #include "RenderCommandListD3D12.h"
+#include "DynamicBufferD3D12.h"
 
 
 /// <summary>
@@ -26,9 +27,15 @@ private:
 	TRefCountPtr<ID3D12RootSignature> RootSignature;
 	TRefCountPtr<ID3D12PipelineState> PipelineStateObject;
 
-	// backbuffer RTV Heap
+
+	// Make Heap manager. Scene ConstatnBuffers
+	TRefCountPtr<ID3D12DescriptorHeap> CBVHeap;
+
+	// Make Heap manager. backbuffer RTV Heap
 	TRefCountPtr<ID3D12DescriptorHeap> RTVHeap;
+
 	uint32 RTVDescriptorSize;
+	uint32 CBVSRVUAVDescriptorSize;
 
 	// App resources.
 	TRefCountPtr<ID3D12Resource> VertexBuffer;
@@ -51,6 +58,9 @@ private:
 	TRefCountPtr<IDXGISwapChain3> SwapChain;
 	TRefCountPtr<ID3D12Resource> RenderTargets[NumBackBuffers];
 
+
+	RDynamicBufferD3D12 DynamicBuffer;
+
 public:
 	RRenderBackendD3D12();
 	virtual ~RRenderBackendD3D12() = default;
@@ -59,8 +69,18 @@ public:
 	virtual void Teardown() override;
 	virtual void FunctionalityTestRender() override;
 
+	ID3D12Device* GetDevice()
+	{
+		return Device.Get();
+	}
 
 	void WaitForPreviousFence();
+
+
+	virtual RDynamicBuffer* GetGlobalDynamicBuffer() override
+	{
+		return &DynamicBuffer;
+	}
 
 	friend class RRenderCommandListD3D12;
 };

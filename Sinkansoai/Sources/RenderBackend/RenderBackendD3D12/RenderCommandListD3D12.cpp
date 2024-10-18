@@ -5,14 +5,20 @@ void RRenderCommandListD3D12::AllocateCommandLsit(RRenderBackendD3D12& Backend)
 {
 	auto Device = Backend.Device;
 
-	if (HRESULT HR = Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&CommandAllocator)) != S_OK)
 	{
-		ThrowIfFailed(HR);
+		HRESULT HR = Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&CommandAllocator));
+		if (HR != S_OK)
+		{
+			ThrowIfFailed(HR);
+		}
 	}
 
-	if (HRESULT HR = Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, CommandAllocator, nullptr, IID_PPV_ARGS(&CommandList)) != S_OK)
 	{
-		ThrowIfFailed(HR);
+		HRESULT HR = Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, CommandAllocator, nullptr, IID_PPV_ARGS(&CommandList));
+		if (HR != S_OK)
+		{
+			ThrowIfFailed(HR);
+		}
 	}
 
 	ThrowIfFailed( CommandList->Close() );

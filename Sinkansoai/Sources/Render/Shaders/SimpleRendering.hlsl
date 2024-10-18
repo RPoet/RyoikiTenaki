@@ -9,23 +9,39 @@
 //
 //*********************************************************
 
-struct PSInput
+cbuffer View : register(b0)
 {
-    float4 position : SV_POSITION;
-    float4 color : COLOR;
+    float4x4 ViewToWorldMatrix;
+    float4x4 WorldToViewMatrix;
+    float4x4 ProjMatrix;
+    float4x4 WorldToClip;
+
+    float DeltaTime;
+    float WorldTime;
+    float Offset;
+    float Pad;
 };
 
-PSInput VSMain(float4 position : POSITION, float4 color : COLOR)
+struct PSInput
 {
-    PSInput result;
+    float4 Position : SV_POSITION;
+    float4 Color : COLOR;
+};
 
-    result.position = position;
-    result.color = color;
+PSInput VSMain(float4 Position : POSITION, float4 Color : COLOR)
+{
+    PSInput Result;
 
-    return result;
+    Result.Position = Position;
+    Result.Position.x += Offset;
+
+    Result.Color = Color;
+
+    return Result;
 }
 
-float4 PSMain(PSInput input) : SV_TARGET
+float4 PSMain(PSInput Input) : SV_TARGET
 {
-    return input.color;
+    return Input.Color;
 }
+

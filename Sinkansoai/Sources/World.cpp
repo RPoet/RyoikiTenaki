@@ -43,15 +43,24 @@ void MWorld::Tick(float DeltaTime)
 {
 	// Main loop
 	ObjectSystem.Tick(DeltaTime);
+	Scene->SetDelatTime(DeltaTime);
 }
 
 void MWorld::DrawViewport()
 {
+	float SceneDeltaTime = Scene->GetDeltaTime();
+
+	MTaskSystem::Get().AddRenderCommand(TEXT("Update Delta Time"),
+		[InScene = Scene, SceneDeltaTime](RRenderCommandList& CommandList)
+		{
+			InScene->SetDelatTime(SceneDeltaTime);
+		});
+
 	MTaskSystem::Get().AddRenderCommand(TEXT("Draw Viewport"),
 		[InCamera = Camera, InScene = Scene](RRenderCommandList& CommandList)
 		{
 			//cout << "Draw Viweport Command body" << endl;
-			RViewContext ViewContext = InCamera.GetViewContext();
+			RViewContext ViewContext = const_cast<MCamera&>(InCamera).GetViewContext();
 
 			DrawViweport_RT(CommandList, *InScene, ViewContext);
 		});

@@ -31,6 +31,9 @@
     <Filter Include="Render">
       <UniqueIdentifier>{f978d2d6-70c5-4627-a0d2-7f2f256acc6f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Misc">
+      <UniqueIdentifier>{6d2e2bfa-7128-4132-a91d-044933ee01e1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Main.cpp">
@@ -110,6 +113,12 @@
     </ClCompile>
     <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\RenderCommandListD3D12.cpp">
       <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\DynamicBufferD3D12.cpp">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\DynamicBuffer.cpp">
+      <Filter>RenderBackend</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -226,6 +235,18 @@
     </ClInclude>
     <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12Common.h">
       <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Misc\Matrix.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\DynamicBufferD3D12.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\DynamicBuffer.h">
+      <Filter>RenderBackend</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderResource.h">
+      <Filter>RenderBackend</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

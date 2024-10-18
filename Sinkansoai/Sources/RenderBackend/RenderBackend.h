@@ -1,6 +1,7 @@
 #pragma once
 #include "../Definitions.h"
 #include "RenderCommandList.h"
+#include "DynamicBuffer.h"
 
 class RRenderBackend
 {
@@ -13,10 +14,10 @@ public:
 	RRenderBackend() = default;
 	virtual ~RRenderBackend() = default;
 
+
 	virtual void Init() {}
 	virtual void Teardown() {}
 	virtual void FunctionalityTestRender() {};
-
 
 	void SetBackendName(const String& NAME)
 	{
@@ -32,5 +33,7 @@ public:
 	{
 		return MainCommandList;
 	}
+
+	virtual RDynamicBuffer* GetGlobalDynamicBuffer() { return nullptr;  }
 };
 

@@ -5,6 +5,7 @@
 #include "../RenderBackend/RenderBackend.h"
 #include "../RenderBackend/RenderCommandList.h"
 
+
 class RRenderer
 {
 private:
@@ -13,7 +14,8 @@ private:
 	RScene& Scene;
 
 	vector< RViewContext > ViewContexts;
-
+	vector< RViewMatrices > ViewMatrices;
+	
 public:
 	RRenderer(RScene& Scene);
 	~RRenderer() = default;
@@ -21,6 +23,7 @@ public:
 	void AddView(const RViewContext& ViewContext)
 	{
 		ViewContexts.emplace_back(ViewContext);
+		ViewMatrices.emplace_back();
 	}
 
 	void ResolveViewMatrices();
@@ -30,5 +33,5 @@ public:
 };
 
 
-
 void DrawViweport_RT(RRenderCommandList& CommandList, RScene& Scene, const RViewContext& ViewContext);
+

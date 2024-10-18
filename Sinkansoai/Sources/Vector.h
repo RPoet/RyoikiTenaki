@@ -1,53 +1,19 @@
 #pragma once
 #include "PlatformDefinitions.h"
 
-struct float3
-{
-	float X;
-	float Y;
-	float Z;
-};
+#include <DirectXMath.h>
 
-struct float4
-{
-	float X;
-	float Y;
-	float Z;
-	float W;
-};
+using float2 = DirectX::XMFLOAT2;
+using float3 = DirectX::XMFLOAT3;
+using float4 = DirectX::XMFLOAT4;
 
-struct int3
-{
-	int32 X;
-	int32 Y;
-	int32 Z;
-};
+using int2 = DirectX::XMINT2;
+using int3 = DirectX::XMINT3;
+using int4 = DirectX::XMINT4;
 
-struct int4
-{
-	int32 X;
-	int32 Y;
-	int32 Z;
-	int32 W;
-};
+using uint2 = DirectX::XMUINT2;
+using uint3 = DirectX::XMUINT3;
+using uint4 = DirectX::XMUINT4;
 
-struct uint2
-{
-	uint32 X;
-	uint32 Y;
-};
+using XMVECTOR = DirectX::XMVECTOR;
 
-struct uint3
-{
-	uint32 X;
-	uint32 Y;
-	uint32 Z;
-};
-
-struct uint4
-{
-	uint32 X;
-	uint32 Y;
-	uint32 Z;
-	uint32 W;
-};

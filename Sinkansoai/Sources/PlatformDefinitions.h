@@ -44,6 +44,7 @@ using uint8 = unsigned char;
 
 #include < windows.h >
 #include "Vector.h"
+#include "Misc/Matrix.h"
 
 struct MStartupParams
 {
