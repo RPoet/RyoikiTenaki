@@ -37,6 +37,9 @@
     <Filter Include="Engine">
       <UniqueIdentifier>{42a8c3e4-f30c-48f7-92ef-2200d38535ea}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Module">
+      <UniqueIdentifier>{740daa89-39a7-4316-8036-2f2cd40b50c1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Main.cpp">
@@ -131,6 +134,9 @@
     </ClCompile>
     <ClCompile Include="Sources\Engine\Mesh.cpp">
       <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Module\MeshBuilder.cpp">
+      <Filter>Module</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -271,6 +277,9 @@
     </ClInclude>
     <ClInclude Include="Sources\Engine\Mesh.h">
       <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Module\MeshBuilder.h">
+      <Filter>Module</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

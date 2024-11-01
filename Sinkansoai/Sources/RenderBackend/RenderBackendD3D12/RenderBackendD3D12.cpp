@@ -1,6 +1,6 @@
 #include "../../Windows.h"
-
 #include "../../Misc/Geometry.h"
+#include "../../Module/MeshBuilder.h"
 
 #include "RenderBackendD3D12.h"
 #include "RenderCommandListD3D12.h"
@@ -245,7 +245,8 @@ void RRenderBackendD3D12::Init()
 			D3D12_INPUT_ELEMENT_DESC InputElementDescs[] =
 			{
 				{ "POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT,		0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-				{ "COLOR",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+				{ "TEXCOORD",		0, DXGI_FORMAT_R32G32_FLOAT,	1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+				//{ "COLOR",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 			};
 
 			// Describe and create the graphics pipeline state object (PSO).
@@ -275,14 +276,18 @@ void RRenderBackendD3D12::Init()
 
 		// Create testing vertex buffer.
 		{
-			MMesh Mesh = MGeometryGenerator::Get().GenerateBox(50, 50, 50);
+			//MMesh Mesh = MGeometryGenerator::Get().GenerateBox(50, 50, 50);
+
+
+			MMesh Mesh = MMeshBuilder::Get().LoadMesh(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Resources/sponza.obj"));
 
 			PositionVertexBuffer.SetRawVertexBuffer(Mesh.RenderData.Positions);
 			PositionVertexBuffer.AllocateResource();
 
-
-			ColorVertexBuffer.SetRawVertexBuffer(Mesh.RenderData.Colors);
-			ColorVertexBuffer.AllocateResource();
+			UVVertexBuffer.SetRawVertexBuffer(Mesh.RenderData.UV0);
+			UVVertexBuffer.AllocateResource();
+			//ColorVertexBuffer.SetRawVertexBuffer(Mesh.RenderData.Colors);
+			//ColorVertexBuffer.AllocateResource();
 
 			IndexBuffer.SetIndexBuffer(Mesh.RenderData.Indices);
 			IndexBuffer.AllocateResource();
@@ -373,7 +378,7 @@ void RRenderBackendD3D12::FunctionalityTestRender()
 	CommandList->ClearRenderTargetView(RTVHandle, ClearColor, 0, nullptr);
 	CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	CommandList->IASetVertexBuffers(0, 1, &PositionVertexBuffer.GetVertexBufferView());
-	CommandList->IASetVertexBuffers(1, 1, &ColorVertexBuffer.GetVertexBufferView());
+	CommandList->IASetVertexBuffers(1, 1, &UVVertexBuffer.GetVertexBufferView());
 
 	CommandList->IASetIndexBuffer(&IndexBuffer.GetIndexBufferView());
 	CommandList->DrawIndexedInstanced(IndexBuffer.GetNumIndices(), 1, 0, 0, 0);

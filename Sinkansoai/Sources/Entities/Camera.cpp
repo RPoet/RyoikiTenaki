@@ -15,7 +15,7 @@ void MCamera::Tick(float DeltaTime)
 {
 	const float3 FocusPoint = float3(0, 0, 0);
 
-	const float Move = DeltaTime * 100;
+	const float Move = DeltaTime * 500;
 	// Keyboard Input
 	if (MInput::Get().IsPressed('W'))
 	{

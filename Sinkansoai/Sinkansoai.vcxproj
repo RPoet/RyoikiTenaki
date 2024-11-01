@@ -32,6 +32,7 @@
     <ClCompile Include="Sources\Launcher.cpp" />
     <ClCompile Include="Sources\Main.cpp" />
     <ClCompile Include="Sources\Module.cpp" />
+    <ClCompile Include="Sources\Module\MeshBuilder.cpp" />
     <ClCompile Include="Sources\ObjectBase.cpp" />
     <ClCompile Include="Sources\RenderBackend\DynamicBuffer.cpp" />
     <ClCompile Include="Sources\RenderBackend\RenderBackend.cpp" />
@@ -69,6 +70,7 @@
     <ClInclude Include="Sources\Misc\Geometry.h" />
     <ClInclude Include="Sources\Misc\Matrix.h" />
     <ClInclude Include="Sources\Module.h" />
+    <ClInclude Include="Sources\Module\MeshBuilder.h" />
     <ClInclude Include="Sources\ObjectBase.h" />
     <ClInclude Include="Sources\PlatformDefinitions.h" />
     <ClInclude Include="Sources\RenderBackend\DynamicBuffer.h" />

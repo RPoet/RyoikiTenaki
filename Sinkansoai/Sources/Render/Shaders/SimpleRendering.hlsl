@@ -28,15 +28,11 @@ struct PSInput
     float4 Color : COLOR;
 };
 
-PSInput VSMain(float4 Position : POSITION, float4 Color : COLOR)
+PSInput VSMain(float4 Position : POSITION, float2 UV : TEXCOORD)
 {
     PSInput Result;
     Result.Position = mul( WorldToClip, float4(Position.xyz, 1)  );
-    Result.Color = Color;
-    
-
-    Result.Color = Color;
-
+    Result.Color = float4(UV, 0, 1);
     return Result;
 }
 
