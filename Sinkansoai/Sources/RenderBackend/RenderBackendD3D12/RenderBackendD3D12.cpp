@@ -1,5 +1,7 @@
 #include "../../Windows.h"
 
+#include "../../Misc/Geometry.h"
+
 #include "RenderBackendD3D12.h"
 #include "RenderCommandListD3D12.h"
 #include <d3dcompiler.h>
@@ -10,6 +12,10 @@
 
 RRenderBackendD3D12::RRenderBackendD3D12()
 	: DynamicBuffer(*this, TEXT("Global Buffer"))
+	, PositionVertexBuffer(*this, TEXT("Position VertexBuffer"))
+	, ColorVertexBuffer(*this, TEXT("Color VertexBuffer"))
+	, UVVertexBuffer(*this, TEXT("UV VertexBuffer"))
+	, IndexBuffer(*this, TEXT("Global Index buffer"))
 {
 	SetBackendName(TEXT("D3D12"));
 }
@@ -238,8 +244,8 @@ void RRenderBackendD3D12::Init()
 			// Define the vertex input layout.
 			D3D12_INPUT_ELEMENT_DESC InputElementDescs[] =
 			{
-				{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-				{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+				{ "POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT,		0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "COLOR",		0, DXGI_FORMAT_R32G32B32A32_FLOAT,	1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 			};
 
 			// Describe and create the graphics pipeline state object (PSO).
@@ -249,7 +255,9 @@ void RRenderBackendD3D12::Init()
 			PsoDesc.VS = CD3DX12_SHADER_BYTECODE(VertexShader.Get());
 			PsoDesc.PS = CD3DX12_SHADER_BYTECODE(PixelShader.Get());
 			PsoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-			PsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+			PsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+			PsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+
 			PsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PsoDesc.DepthStencilState.DepthEnable = FALSE;
 			PsoDesc.DepthStencilState.StencilEnable = FALSE;
@@ -265,56 +273,19 @@ void RRenderBackendD3D12::Init()
 
 
 
-		// Create the vertex buffer.
+		// Create testing vertex buffer.
 		{
+			MMesh Mesh = MGeometryGenerator::Get().GenerateBox(50, 50, 50);
 
-			float AspectRatio = 1920.0f / 1080.0f;
-			// Define the geometry for a triangle.
-			const float Size = 0.25f;
-			Vertex TriangleVertices[] =
-			{
-				//{ { 0.0f, Size * AspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-				//{ { Size, -Size * AspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-				//{ { -Size, -Size * AspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
+			PositionVertexBuffer.SetRawVertexBuffer(Mesh.RenderData.Positions);
+			PositionVertexBuffer.AllocateResource();
 
-				{ { -Size, +Size, 0 }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-				{ { -Size, -Size, 0 }, { 0.0f, 1.0f, .0f, 1.0f } },
-				{ { Size, Size, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f } },
 
-				{ { -Size, -Size, 0 }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-				{ { +Size, +Size, 0 }, { 0.0f, 1.0f, .0f, 1.0f } },
-				{ { Size, -Size, 0 }, { 0.0f, 0.0f, 1.0f, 1.0f } },
-			};
+			ColorVertexBuffer.SetRawVertexBuffer(Mesh.RenderData.Colors);
+			ColorVertexBuffer.AllocateResource();
 
-			const UINT VertexBufferSize = sizeof(TriangleVertices);
-
-			// Note: using upload heaps to transfer static data like vert buffers is not 
-			// recommended. Every time the GPU needs it, the upload heap will be marshalled 
-			// over. Please read up on Default Heap usage. An upload heap is used here for 
-			// code simplicity and because there are very few verts to actually transfer.
-
-			auto HeapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-			auto ResourceDesc = CD3DX12_RESOURCE_DESC::Buffer(VertexBufferSize);
-
-			ThrowIfFailed(Device->CreateCommittedResource(
-				&HeapProperty,
-				D3D12_HEAP_FLAG_NONE,
-				&ResourceDesc,
-				D3D12_RESOURCE_STATE_GENERIC_READ,
-				nullptr,
-				IID_PPV_ARGS(&VertexBuffer)));
-
-			// Copy the triangle data to the vertex buffer.
-			UINT8* pVertexDataBegin;
-			CD3DX12_RANGE ReadRange(0, 0);        // We do not intend to read from this resource on the CPU.
-			ThrowIfFailed(VertexBuffer->Map(0, &ReadRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-			memcpy(pVertexDataBegin, TriangleVertices, sizeof(TriangleVertices));
-			VertexBuffer->Unmap(0, nullptr);
-
-			// Initialize the vertex buffer view.
-			VertexBufferView.BufferLocation = VertexBuffer->GetGPUVirtualAddress();
-			VertexBufferView.StrideInBytes = sizeof(Vertex);
-			VertexBufferView.SizeInBytes = VertexBufferSize;
+			IndexBuffer.SetIndexBuffer(Mesh.RenderData.Indices);
+			IndexBuffer.AllocateResource();
 
 			cout << " Test vertex buffer creation " << endl;
 		}
@@ -401,8 +372,11 @@ void RRenderBackendD3D12::FunctionalityTestRender()
 	const float ClearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
 	CommandList->ClearRenderTargetView(RTVHandle, ClearColor, 0, nullptr);
 	CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	CommandList->IASetVertexBuffers(0, 1, &VertexBufferView);
-	CommandList->DrawInstanced(6, 1, 0, 0);
+	CommandList->IASetVertexBuffers(0, 1, &PositionVertexBuffer.GetVertexBufferView());
+	CommandList->IASetVertexBuffers(1, 1, &ColorVertexBuffer.GetVertexBufferView());
+
+	CommandList->IASetIndexBuffer(&IndexBuffer.GetIndexBufferView());
+	CommandList->DrawIndexedInstanced(IndexBuffer.GetNumIndices(), 1, 0, 0, 0);
 
 	{
 		// Indicate that the back buffer will now be used to present.
@@ -418,7 +392,6 @@ void RRenderBackendD3D12::FunctionalityTestRender()
 
 	// Present the frame.
 	ThrowIfFailed(SwapChain->Present(1, 0));
-
 
 	WaitForPreviousFence();
 }

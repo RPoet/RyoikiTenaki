@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="Sources\Component.cpp" />
     <ClCompile Include="Sources\Engine.cpp" />
+    <ClCompile Include="Sources\Engine\Mesh.cpp" />
     <ClCompile Include="Sources\Entities\Camera.cpp" />
     <ClCompile Include="Sources\Entities\Components\Transform.cpp" />
     <ClCompile Include="Sources\Entities\PlaceableEntity.cpp" />
@@ -37,7 +38,9 @@
     <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\DynamicBufferD3D12.cpp" />
     <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12.cpp" />
     <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\RenderCommandListD3D12.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\ResourceBufferD3D12.cpp" />
     <ClCompile Include="Sources\RenderBackend\RenderCommandList.cpp" />
+    <ClCompile Include="Sources\RenderBackend\ResourceBuffer.cpp" />
     <ClCompile Include="Sources\Render\Renderer.cpp" />
     <ClCompile Include="Sources\Render\Scene.cpp" />
     <ClCompile Include="Sources\SceneGraphSystem\Component.cpp" />
@@ -53,6 +56,7 @@
     <ClInclude Include="Sources\Component.h" />
     <ClInclude Include="Sources\Definitions.h" />
     <ClInclude Include="Sources\Engine.h" />
+    <ClInclude Include="Sources\Engine\Mesh.h" />
     <ClInclude Include="Sources\Entities\Camera.h" />
     <ClInclude Include="Sources\Entities\Components\Transform.h" />
     <ClInclude Include="Sources\Entities\PlaceableEntity.h" />
@@ -62,6 +66,7 @@
     <ClInclude Include="Sources\EntityComponent\EntityManager.h" />
     <ClInclude Include="Sources\Input.h" />
     <ClInclude Include="Sources\Launcher.h" />
+    <ClInclude Include="Sources\Misc\Geometry.h" />
     <ClInclude Include="Sources\Misc\Matrix.h" />
     <ClInclude Include="Sources\Module.h" />
     <ClInclude Include="Sources\ObjectBase.h" />
@@ -75,8 +80,10 @@
     <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12.h" />
     <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12Common.h" />
     <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderCommandListD3D12.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\ResourceBufferD3D12.h" />
     <ClInclude Include="Sources\RenderBackend\RenderCommandList.h" />
     <ClInclude Include="Sources\RenderBackend\RenderResource.h" />
+    <ClInclude Include="Sources\RenderBackend\ResourceBuffer.h" />
     <ClInclude Include="Sources\Render\Renderer.h" />
     <ClInclude Include="Sources\Render\Scene.h" />
     <ClInclude Include="Sources\Render\View.h" />

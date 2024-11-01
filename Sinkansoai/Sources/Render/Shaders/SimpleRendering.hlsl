@@ -31,9 +31,9 @@ struct PSInput
 PSInput VSMain(float4 Position : POSITION, float4 Color : COLOR)
 {
     PSInput Result;
-
-    Result.Position = Position;
-    Result.Position.x += Offset;
+    Result.Position = mul( WorldToClip, float4(Position.xyz, 1)  );
+    Result.Color = Color;
+    
 
     Result.Color = Color;
 

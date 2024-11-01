@@ -8,7 +8,7 @@ class MCamera : public MPlaceableEntity
 	CLASS_DECORATOR(MCamera)
 
 private:
-	float FoV = 60;
+	float FoV = 103;
 	float MinZ = 0.0001f;
 
 	uint32 Width = 1920;

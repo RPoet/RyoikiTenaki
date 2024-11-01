@@ -13,28 +13,41 @@ void MCamera::Destroy()
 
 void MCamera::Tick(float DeltaTime)
 {
+	const float3 FocusPoint = float3(0, 0, 0);
 
+	const float Move = DeltaTime * 100;
 	// Keyboard Input
 	if (MInput::Get().IsPressed('W'))
 	{
-		cout << " W is pressed " << endl;
-	}
-
-	if (MInput::Get().IsPressed('A'))
-	{
-		cout << " A is pressed " << endl;
+		this->Transform.Position.z += Move;
 	}
 
 	if (MInput::Get().IsPressed('S'))
 	{
-		cout << " S is pressed " << endl;
+		this->Transform.Position.z -= Move;
+	}
+
+	if (MInput::Get().IsPressed('A'))
+	{
+		this->Transform.Position.x += Move;
 	}
 
 	if (MInput::Get().IsPressed('D'))
 	{
-		cout << " D is pressed " << endl;
+		this->Transform.Position.x -= Move;
 	}
 
+	if (MInput::Get().IsPressed('U'))
+	{
+		this->Transform.Position.y += Move;
+	}
+
+	if (MInput::Get().IsPressed('I'))
+	{
+		this->Transform.Position.y -= Move;
+	}
+
+	cout << this->Transform.Position.x << " " << this->Transform.Position.y << " " << this->Transform.Position.z << endl;
 
 	// Rotation movement
 	//MInput::Get().IsPressed('Q');

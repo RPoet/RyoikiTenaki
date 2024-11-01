@@ -34,6 +34,9 @@
     <Filter Include="Misc">
       <UniqueIdentifier>{6d2e2bfa-7128-4132-a91d-044933ee01e1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine">
+      <UniqueIdentifier>{42a8c3e4-f30c-48f7-92ef-2200d38535ea}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Main.cpp">
@@ -119,6 +122,15 @@
     </ClCompile>
     <ClCompile Include="Sources\RenderBackend\DynamicBuffer.cpp">
       <Filter>RenderBackend</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\ResourceBuffer.cpp">
+      <Filter>RenderBackend</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\ResourceBufferD3D12.cpp">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Engine\Mesh.cpp">
+      <Filter>Engine</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -247,6 +259,18 @@
     </ClInclude>
     <ClInclude Include="Sources\RenderBackend\RenderResource.h">
       <Filter>RenderBackend</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\ResourceBuffer.h">
+      <Filter>RenderBackend</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\ResourceBufferD3D12.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Misc\Geometry.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Engine\Mesh.h">
+      <Filter>Engine</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

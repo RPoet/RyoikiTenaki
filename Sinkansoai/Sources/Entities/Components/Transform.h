@@ -4,12 +4,12 @@
 struct MTransform
 {
 private:
-	bool bIsDirty = false;
+	bool bIsDirty = true;
 
 public:
-	float3 Scale{};
-	float3 Rotation{};
-	float4 Position{};
+	float3 Scale{1, 1, 1};
+	float3 Rotation{0, 0, 0};
+	float4 Position{0, 0, 0, 1};
 
 	XMMATRIX LocalToWorld{};
 

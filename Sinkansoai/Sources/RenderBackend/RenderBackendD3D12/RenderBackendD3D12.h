@@ -5,7 +5,7 @@
 #include "RenderBackendD3D12Common.h"
 #include "RenderCommandListD3D12.h"
 #include "DynamicBufferD3D12.h"
-
+#include "ResourceBufferD3D12.h"
 
 /// <summary>
 /// TO DO : Remove DirectXMath here
@@ -37,9 +37,15 @@ private:
 	uint32 RTVDescriptorSize;
 	uint32 CBVSRVUAVDescriptorSize;
 
+	RVertexBufferD3D12 PositionVertexBuffer;
+	RVertexBufferD3D12 ColorVertexBuffer;
+	RVertexBufferD3D12 UVVertexBuffer;
+
+	RIndexBufferD3D12 IndexBuffer;
+
 	// App resources.
-	TRefCountPtr<ID3D12Resource> VertexBuffer;
-	D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
+	//TRefCountPtr<ID3D12Resource> VertexBuffer;
+	//D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
 
 	// Synchronization objects.
 	uint32 FrameIndex;
@@ -47,11 +53,6 @@ private:
 	ComPtr<ID3D12Fence> Fence;
 	UINT64 FenceValue;
 
-	struct Vertex
-	{
-		XMFLOAT3 position;
-		XMFLOAT4 color;
-	};
 
 	CD3DX12_VIEWPORT Viewport;
 	CD3DX12_RECT ScissorRect;
