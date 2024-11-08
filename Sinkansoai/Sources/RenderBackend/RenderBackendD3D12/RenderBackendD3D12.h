@@ -34,7 +34,11 @@ private:
 	// Make Heap manager. backbuffer RTV Heap
 	TRefCountPtr<ID3D12DescriptorHeap> RTVHeap;
 
+	// Make Heap manager. backbuffer DSV Heap
+	TRefCountPtr<ID3D12DescriptorHeap> DSVHeap;
+
 	uint32 RTVDescriptorSize;
+	uint32 DSVDescriptorSize;
 	uint32 CBVSRVUAVDescriptorSize;
 
 	RVertexBufferD3D12 PositionVertexBuffer;
@@ -58,8 +62,8 @@ private:
 	CD3DX12_RECT ScissorRect;
 	TRefCountPtr<IDXGISwapChain3> SwapChain;
 	TRefCountPtr<ID3D12Resource> RenderTargets[NumBackBuffers];
-
-
+	TRefCountPtr<ID3D12Resource> DepthStencilBuffer;
+	
 	RDynamicBufferD3D12 DynamicBuffer;
 
 public:
@@ -82,6 +86,11 @@ public:
 	{
 		return &DynamicBuffer;
 	}
+
+	TRefCountPtr<ID3D12Resource> CreateUnderlyingResource(EResourceType ResourceType, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height, uint32 NumMips, uint32 Depths);
+
+
+	TRefCountPtr<ID3D12Resource> CreateTexture2DResource(String&& Name, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height);
 
 	friend class RRenderCommandListD3D12;
 };

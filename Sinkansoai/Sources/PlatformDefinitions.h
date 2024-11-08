@@ -55,3 +55,6 @@ struct MStartupParams
 };
 
 extern MStartupParams GStartupParams;
+
+
+#define verify(x) assert( x == S_OK )

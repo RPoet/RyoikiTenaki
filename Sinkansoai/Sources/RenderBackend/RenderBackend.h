@@ -3,6 +3,24 @@
 #include "RenderCommandList.h"
 #include "DynamicBuffer.h"
 
+enum EResourceType
+{
+	RenderBuffer = 1,
+	RenderTexture1D = 2,
+	RenderTexture2D = 3,
+	RenderTexture3D = 4
+};
+
+enum EResourceFlag
+{
+	RenderTarget = 1,
+	DepthStencilTarget = 2,
+	UnorderedAccess = 3,
+	DenyShaderResource = 4,
+	AllowSimultanenousAccess = 5,
+};
+
+
 class RRenderBackend
 {
 protected:

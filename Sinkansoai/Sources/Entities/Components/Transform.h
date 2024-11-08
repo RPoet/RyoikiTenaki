@@ -25,7 +25,6 @@ public:
 		bIsDirty = true;
 	}
 
-
 	// In both left hand and right hand coordinate system
 	// X Axis and Y Axis same but Z Axis is different
 	
@@ -55,7 +54,7 @@ public:
 			auto ScaleM = DirectX::XMMatrixScaling(Scale.x, Scale.y, Scale.z);
 			auto TranslationM = DirectX::XMMatrixTranslation(Position.x, Position.y, Position.z);
 
-			LocalToWorld = ScaleM * RotationM * TranslationM;
+			LocalToWorld = TranslationM * RotationM * ScaleM;
 		}
 
 		return LocalToWorld;

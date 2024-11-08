@@ -7,18 +7,12 @@ void RRenderCommandListD3D12::AllocateCommandLsit(RRenderBackendD3D12& Backend)
 
 	{
 		HRESULT HR = Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&CommandAllocator));
-		if (HR != S_OK)
-		{
-			ThrowIfFailed(HR);
-		}
+		verify(HR);
 	}
 
 	{
 		HRESULT HR = Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, CommandAllocator, nullptr, IID_PPV_ARGS(&CommandList));
-		if (HR != S_OK)
-		{
-			ThrowIfFailed(HR);
-		}
+		verify(HR);
 	}
 
 	ThrowIfFailed( CommandList->Close() );
@@ -45,4 +39,15 @@ RRenderCommandListD3D12::~RRenderCommandListD3D12()
 
 
 	cout << "Command List Deleted" << endl;
+}
+
+void RRenderCommandListD3D12::Reset()
+{
+	verify(CommandAllocator->Reset());
+	verify(CommandList->Reset(CommandAllocator, nullptr));
+}
+
+void RRenderCommandListD3D12::Close()
+{
+	verify(CommandList->Close());
 }

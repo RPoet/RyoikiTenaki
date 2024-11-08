@@ -84,6 +84,17 @@ MMesh MMeshBuilder::LoadMesh(const String& Path)
 	vector<float3> normals;
 	vector<float2> texCoords;
 
+	Out.RenderData.Positions.reserve(100000);
+	Out.RenderData.Colors.reserve(100000);
+	Out.RenderData.Normals.reserve(100000);
+	Out.RenderData.UV0.reserve(100000);
+	Out.RenderData.Tangents.reserve(100000);
+	Out.RenderData.Indices.reserve(100000);
+
+	positions.reserve(10000000);
+	normals.reserve(10000000);
+	texCoords.reserve(10000000);
+
 	unordered_map<Vertex, uint32_t> uniqueVertices = {};
 
 	std::ifstream file(Path);
@@ -118,16 +129,12 @@ MMesh MMeshBuilder::LoadMesh(const String& Path)
 			ss >> texCoord.x >> texCoord.y;
 			texCoords.push_back(texCoord);
 		}
-		else if(prefix == "f")
-		{   // 면(Face)
+		else if (prefix == "f") {
+			std::vector<uint32_t> faceIndices;
 			std::string vertexData;
-			Vertex vertex;
-			std::vector<uint32_t> faceIndices; // 임시로 면 인덱스를 저장할 벡터
 
-			for (int i = 0; i < 3; i++) { // 삼각형 면 기준
-				ss >> vertexData;
-
-				// 각 인덱스 파싱 (v/vt/vn 형식)
+			// 면의 정점을 모두 읽어들임
+			while (ss >> vertexData) {
 				size_t pos1 = vertexData.find('/');
 				size_t pos2 = vertexData.find('/', pos1 + 1);
 
@@ -135,24 +142,28 @@ MMesh MMeshBuilder::LoadMesh(const String& Path)
 				int texIndex = std::stoi(vertexData.substr(pos1 + 1, pos2 - pos1 - 1)) - 1;
 				int normIndex = std::stoi(vertexData.substr(pos2 + 1)) - 1;
 
+				Vertex vertex;
+
 				vertex.position = positions[posIndex];
 				vertex.texCoord = texCoords[texIndex];
-				vertex.normal = normals[normIndex];
 
 				// 중복된 정점인지 확인
 				if (uniqueVertices.count(vertex) == 0) {
 					uniqueVertices[vertex] = static_cast<uint32_t>(Out.RenderData.Positions.size());
+
 					Out.RenderData.Positions.push_back(vertex.position);
 					Out.RenderData.UV0.push_back(vertex.texCoord);
-					Out.RenderData.Normals.push_back(vertex.normal);
 				}
 				faceIndices.push_back(uniqueVertices[vertex]);
 			}
 
-			// DirectX 시계 방향(CW)에 맞추기 위해 인덱스 순서를 반대로 추가
-			Out.RenderData.Indices.push_back(faceIndices[2]);
-			Out.RenderData.Indices.push_back(faceIndices[1]);
-			Out.RenderData.Indices.push_back(faceIndices[0]);
+			// 삼각화 (Triangulation)
+			// 다각형을 삼각형으로 나눔 (삼각형인 경우는 그대로 유지)
+			for (size_t i = 1; i + 1 < faceIndices.size(); ++i) {
+				Out.RenderData.Indices.push_back(faceIndices[0]);
+				Out.RenderData.Indices.push_back(faceIndices[i]);
+				Out.RenderData.Indices.push_back(faceIndices[i + 1]);
+			}
 		}
 	}
 

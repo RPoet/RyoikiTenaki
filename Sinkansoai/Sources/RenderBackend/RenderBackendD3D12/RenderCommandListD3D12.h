@@ -22,5 +22,9 @@ public:
 
 	void AllocateCommandLsit(RRenderBackendD3D12& Backend);
 
+
+	void Reset();
+	void Close();
+
 	friend class RRenderBackendD3D12;
 };

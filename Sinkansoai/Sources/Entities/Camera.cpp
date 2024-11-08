@@ -29,12 +29,12 @@ void MCamera::Tick(float DeltaTime)
 
 	if (MInput::Get().IsPressed('A'))
 	{
-		this->Transform.Position.x += Move;
+		this->Transform.Position.x -= Move;
 	}
 
 	if (MInput::Get().IsPressed('D'))
 	{
-		this->Transform.Position.x -= Move;
+		this->Transform.Position.x += Move;
 	}
 
 	if (MInput::Get().IsPressed('U'))
@@ -47,7 +47,20 @@ void MCamera::Tick(float DeltaTime)
 		this->Transform.Position.y -= Move;
 	}
 
-	cout << this->Transform.Position.x << " " << this->Transform.Position.y << " " << this->Transform.Position.z << endl;
+
+
+	if (MInput::Get().IsPressed('Z'))
+	{
+		this->Transform.Rotation.y -= Move * 0.01;
+	}
+
+
+	if (MInput::Get().IsPressed('X'))
+	{
+		this->Transform.Rotation.y += Move * 0.01;
+	}
+
+	//cout << this->Transform.Position.x << " " << this->Transform.Position.y << " " << this->Transform.Position.z << endl;
 
 	// Rotation movement
 	//MInput::Get().IsPressed('Q');

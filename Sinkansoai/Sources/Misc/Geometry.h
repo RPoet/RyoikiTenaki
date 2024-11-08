@@ -50,9 +50,42 @@ public:
 
 		Out.RenderData.Positions.assign(&Positions[0], &Positions[24]);
 
-
-
 		
+
+		float2 UVs[24];
+
+		UVs[0] = float2(0.0f, 1.0f);
+		UVs[1] = float2(0.0f, 0.0f);
+		UVs[2] = float2(1.0f, 0.0f);
+		UVs[3] = float2(1.0f, 1.0f);
+
+		UVs[4] = float2(1.0f, 1.0f);
+		UVs[5] = float2(0.0f, 1.0f);
+		UVs[6] = float2(0.0f, 0.0f);
+		UVs[7] = float2(1.0f, 0.0f);
+
+		UVs[8] =  float2(0.0f, 1.0f);
+		UVs[9] =  float2(0.0f, 0.0f);
+		UVs[10] = float2(1.0f, 0.0f);
+		UVs[11] = float2(1.0f, 1.0f);
+
+		UVs[12] = float2(1.0f, 1.0f);
+		UVs[13] = float2(0.0f, 1.0f);
+		UVs[14] = float2(0.0f, 0.0f);
+		UVs[15] = float2(1.0f, 0.0f);
+		
+		UVs[16] = float2(0.0f, 1.0f);
+		UVs[17] = float2(0.0f, 0.0f);
+		UVs[18] = float2(1.0f, 0.0f);
+		UVs[19] = float2(1.0f, 1.0f);
+
+		UVs[20] = float2(0.0f, 1.0f);
+		UVs[21] = float2(0.0f, 0.0f);
+		UVs[22] = float2(1.0f, 0.0f);
+		UVs[23] = float2(1.0f, 1.0f);
+
+		Out.RenderData.UV0.assign(&UVs[0], &UVs[24]);
+
 		float4 Colors[24];
 
 		Colors[0] = float4(1, 0, 0, 1);

@@ -9,7 +9,7 @@ class MCamera : public MPlaceableEntity
 
 private:
 	float FoV = 103;
-	float MinZ = 0.0001f;
+	float MinZ = 1;
 
 	uint32 Width = 1920;
 	uint32 Height = 1080;

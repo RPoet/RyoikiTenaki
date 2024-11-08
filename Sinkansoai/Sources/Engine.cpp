@@ -53,10 +53,10 @@ void MEngine::Loop()
 	static float AccumulatedTime = 0;
 	AccumulatedTime+=DeltaTime;
 
-	if (MInput::Get().IsPressed('Q'))
-	{
-		bRun = false;
-	}
+	//if (MInput::Get().IsPressed('Q'))
+	//{
+	//	bRun = false;
+	//}
 
 
 	MTaskSystem::Get().LaunchTasks();

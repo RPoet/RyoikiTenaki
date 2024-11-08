@@ -28,16 +28,17 @@ struct PSInput
     float4 Color : COLOR;
 };
 
-PSInput VSMain(float4 Position : POSITION, float2 UV : TEXCOORD)
+PSInput VSMain(float3 Position : POSITION, float2 UV : TEXCOORD)
 {
     PSInput Result;
-    Result.Position = mul( WorldToClip, float4(Position.xyz, 1)  );
+    //Result.Position = mul( float4(Position.xyz, 1), WorldToClip );
+    Result.Position = mul( WorldToClip, float4(Position.xyz, 1) ); 
     Result.Color = float4(UV, 0, 1);
     return Result;
 }
 
 float4 PSMain(PSInput Input) : SV_TARGET
 {
-    return Input.Color;
+    return float4(Input.Position.z * 100, 0, 0, 1);
 }
 
