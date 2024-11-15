@@ -8,11 +8,13 @@ enum EResourceType
 	RenderBuffer = 1,
 	RenderTexture1D = 2,
 	RenderTexture2D = 3,
-	RenderTexture3D = 4
+	RenderTexture3D = 4,
+	Texture2D = 5
 };
 
 enum EResourceFlag
 {
+	None = 0,
 	RenderTarget = 1,
 	DepthStencilTarget = 2,
 	UnorderedAccess = 3,

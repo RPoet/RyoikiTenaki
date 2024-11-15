@@ -1,6 +1,6 @@
 #pragma once
-#include "../Module.h"
-#include "../Engine/Mesh.h"
+#include "../../Module.h"
+#include "../../Engine/Mesh.h"
 
 class MMeshBuilder : public MModuleBase
 {
@@ -15,6 +15,6 @@ public:
 
 	virtual void Teardown() override;
 
-	MMesh LoadMesh(const String& Path);
+	MMesh LoadMesh(const String& Path, const String& ModelName);
 };
 

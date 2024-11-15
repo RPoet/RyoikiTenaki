@@ -22,6 +22,20 @@ void RRenderCommandListD3D12::AllocateCommandLsit(RRenderBackendD3D12& Backend)
 	bClose = false;
 }
 
+void RRenderCommandListD3D12::CopyTexture(void* pData, ID3D12Resource* Dest, ID3D12Resource* UploadHeap, const uint32 TextureWidth,  const uint32 Height, const uint32 PixelSizeInBytes)
+{
+	D3D12_SUBRESOURCE_DATA TextureData = {};
+	TextureData.pData = pData;
+	TextureData.RowPitch = TextureWidth * PixelSizeInBytes;
+	TextureData.SlicePitch = TextureData.RowPitch * Height;
+
+	UpdateSubresources(CommandList, Dest, UploadHeap, 0, 0, 1, &TextureData);
+	
+	auto Barrier = CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	// move this later
+	CommandList->ResourceBarrier(1, &Barrier);
+}
+
 RRenderCommandListD3D12::~RRenderCommandListD3D12()
 {
 	if (CommandList)

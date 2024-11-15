@@ -1,6 +1,6 @@
 #include "../../Windows.h"
 #include "../../Misc/Geometry.h"
-#include "../../Module/MeshBuilder.h"
+#include "../../Module/Mesh/MeshBuilder.h"
 
 #include "RenderBackendD3D12.h"
 #include "RenderCommandListD3D12.h"
@@ -9,6 +9,44 @@
 #pragma comment ( lib, "d3d12.lib")
 #pragma comment ( lib, "D3DCompiler.lib")
 #pragma comment ( lib, "dxgi.lib")
+
+std::vector<UINT8> GenerateTextureData(const uint32 Width, const uint32 Height, const uint32 PixelSizeInBytes)
+{
+	const UINT rowPitch = Width * PixelSizeInBytes;
+	const UINT cellPitch = rowPitch >> 3;        // The width of a cell in the checkboard texture.
+	const UINT cellHeight = Width >> 3;    // The height of a cell in the checkerboard texture.
+	const UINT textureSize = rowPitch * Height;
+
+	std::vector<UINT8> data(textureSize);
+	UINT8* pData = &data[0];
+
+	for (UINT n = 0; n < textureSize; n += PixelSizeInBytes)
+	{
+		UINT x = n % rowPitch;
+		UINT y = n / rowPitch;
+		UINT i = x / cellPitch;
+		UINT j = y / cellHeight;
+
+		if (i % 2 == j % 2)
+		{
+			pData[n] = 0x00;        // R
+			pData[n + 1] = 0x00;    // G
+			pData[n + 2] = 0x00;    // B
+			pData[n + 3] = 0xff;    // A
+		}
+		else
+		{
+			pData[n] = 0xff;        // R
+			pData[n + 1] = 0xff;    // G
+			pData[n + 2] = 0xff;    // B
+			pData[n + 3] = 0xff;    // A
+		}
+	}
+
+	return data;
+}
+
+MMesh GTestMesh;
 
 RRenderBackendD3D12::RRenderBackendD3D12()
 	: DynamicBuffer(*this, TEXT("Global Buffer"))
@@ -51,6 +89,12 @@ void RRenderBackendD3D12::Init()
 
 		// First commandlist is used as a main command list
 		MainCommandList = &CommandLists[0];
+
+		auto& CommandAllocator = CommandLists[0].CommandAllocator;
+		auto& CommandList = CommandLists[0].CommandList;
+
+		CommandLists[0].Reset();
+
 
 		cout << "D3D12 Renderbackend Device Init Success" << endl;
 
@@ -135,12 +179,9 @@ void RRenderBackendD3D12::Init()
 
 			{
 				// Create the depth/stencil buffer and view.
-				DepthStencilBuffer = CreateTexture2DResource(TEXT("MainDepthStencil"), EResourceFlag::DepthStencilTarget, DepthFormat, MWindow::Get().GetWidth(), MWindow::Get().GetHeight());
-			}
+				DepthStencilBuffer = CreateRenderTargetResource(TEXT("MainDepthStencil"), EResourceFlag::DepthStencilTarget, DepthFormat, MWindow::Get().GetWidth(), MWindow::Get().GetHeight());
 
-			{
-				CD3DX12_CPU_DESCRIPTOR_HANDLE DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
-				Device->CreateDepthStencilView(DepthStencilBuffer.Get(), nullptr, DSVHandle);
+				Device->CreateDepthStencilView(DepthStencilBuffer.Get(), nullptr, DSVHeap->GetCPUDescriptorHandleForHeapStart());
 			}
 
 
@@ -148,10 +189,10 @@ void RRenderBackendD3D12::Init()
 			// Flags indicate that this descriptor heap can be bound to the pipeline 
 			// and that descriptors contained in it can be referenced by a root table.
 			D3D12_DESCRIPTOR_HEAP_DESC CbvHeapDesc = {};
-			CbvHeapDesc.NumDescriptors = 1;
+			CbvHeapDesc.NumDescriptors = 2;
 			CbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			CbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			ThrowIfFailed(Device->CreateDescriptorHeap(&CbvHeapDesc, IID_PPV_ARGS(&CBVHeap)));
+			ThrowIfFailed(Device->CreateDescriptorHeap(&CbvHeapDesc, IID_PPV_ARGS(&CBVSRVHeap)));
 			cout << "Descriptor cbv heap creation success" << endl;
 
 			CBVSRVUAVDescriptorSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -159,7 +200,7 @@ void RRenderBackendD3D12::Init()
 
 			{
 				DynamicBuffer.Allocate(D3D12MaxConstantBufferSize);
-				CD3DX12_CPU_DESCRIPTOR_HANDLE CBVHandle(CBVHeap->GetCPUDescriptorHandleForHeapStart());
+				CD3DX12_CPU_DESCRIPTOR_HANDLE CBVHandle(CBVSRVHeap->GetCPUDescriptorHandleForHeapStart());
 				auto CBVDesc = DynamicBuffer.GetCBVDesc();
 
 				// Insepct this function
@@ -185,6 +226,31 @@ void RRenderBackendD3D12::Init()
 
 		}
 
+		{
+			const uint32 TestTextureWidth = 256;
+			Texture = CreateTexture2DResource(TEXT("CheckerTexture"), EResourceFlag::None, DXGI_FORMAT_R8G8B8A8_UNORM, TestTextureWidth, TestTextureWidth);
+
+			const UINT64 UploadBufferSize = GetRequiredIntermediateSize(Texture.Get(), 0, 1);
+
+			auto UploadHeap = CreateUploadHeap(UploadBufferSize);
+			std::vector<UINT8> RawTexture = GenerateTextureData(TestTextureWidth, TestTextureWidth, 4);
+			AllocatedCommandList.CopyTexture(RawTexture.data(), Texture.Get(), UploadHeap.Get(), TestTextureWidth, TestTextureWidth, 4);
+
+
+			CD3DX12_CPU_DESCRIPTOR_HANDLE CBVHandle(CBVSRVHeap->GetCPUDescriptorHandleForHeapStart());
+			CBVHandle.Offset(1, CBVSRVUAVDescriptorSize);
+
+			// Describe and create a SRV for the texture.
+			D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+			SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			SRVDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			SRVDesc.Texture2D.MipLevels = 1;
+			Device->CreateShaderResourceView(Texture.Get(), &SRVDesc, CBVHandle);
+		}
+
+
+
 		// Create an empty root signature.
 		{
 			D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureData = {};
@@ -198,27 +264,50 @@ void RRenderBackendD3D12::Init()
 				FeatureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 			}
 
-			CD3DX12_DESCRIPTOR_RANGE1 Ranges[1];
+			CD3DX12_DESCRIPTOR_RANGE1 Ranges[2]{};
 			Ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+			Ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
-			CD3DX12_ROOT_PARAMETER1 RootParameters[1];
+			CD3DX12_ROOT_PARAMETER1 RootParameters[3]{};
 			RootParameters[0].InitAsDescriptorTable(1, &Ranges[0], D3D12_SHADER_VISIBILITY_VERTEX);
+			RootParameters[1].InitAsDescriptorTable(1, &Ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);
+			RootParameters[2].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 
 			// Allow input layout and deny uneccessary access to certain pipeline stages.
 			D3D12_ROOT_SIGNATURE_FLAGS RootSignatureFlags =
 				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-				D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
-				D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
+			D3D12_STATIC_SAMPLER_DESC Sampler = {};
+			Sampler.Filter = D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+			Sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			Sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			Sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			Sampler.MipLODBias = 0;
+			Sampler.MaxAnisotropy = 0;
+			Sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+			Sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+			Sampler.MinLOD = 0.0f;
+			Sampler.MaxLOD = D3D12_FLOAT32_MAX;
+			Sampler.ShaderRegister = 0;
+			Sampler.RegisterSpace = 0;
+			Sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 			CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC RootSignatureDesc;
-			RootSignatureDesc.Init_1_1(_countof(RootParameters), RootParameters, 0, nullptr, RootSignatureFlags);
+			RootSignatureDesc.Init_1_1(_countof(RootParameters), RootParameters, 1, &Sampler, RootSignatureFlags);
 
 			ComPtr<ID3DBlob> Signature;
 			ComPtr<ID3DBlob> Error;
 			ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&RootSignatureDesc, FeatureData.HighestVersion, &Signature, &Error));
+			if (Error)
+			{
+				cout << (char*)Error->GetBufferPointer() << endl;
+				Error->Release();
+				ThrowIfFailed(S_FALSE);
+			}
+
 			ThrowIfFailed(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&RootSignature)));
 
 			cout << "Rootsignature creation success" << endl;
@@ -232,33 +321,29 @@ void RRenderBackendD3D12::Init()
 
 #if defined(_DEBUG)
 			// Enable better shader debugging with the graphics debugging tools.
-			UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+			UINT CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #else
 			UINT compileFlags = 0;
 #endif
 
 
 			ComPtr<ID3DBlob> Error;
-			D3DCompileFromFile(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &VertexShader, &Error);
+			D3DCompileFromFile(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), nullptr, nullptr, "VSMain", "vs_5_1", CompileFlags, 0, &VertexShader, &Error);
 
 			if (Error)
 			{
 				cout << (char*)Error->GetBufferPointer() << endl;
 				Error->Release();
-
-
 				ThrowIfFailed(S_FALSE);
 			}
 
 
-			D3DCompileFromFile(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &PixelShader, &Error);
-		
+			D3DCompileFromFile(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), nullptr, nullptr, "PSMain", "ps_5_1", CompileFlags, 0, &PixelShader, &Error);
+
 			if (Error)
 			{
 				cout << (char*)Error->GetBufferPointer() << endl;
 				Error->Release();
-
-
 				ThrowIfFailed(S_FALSE);
 			}
 
@@ -300,7 +385,9 @@ void RRenderBackendD3D12::Init()
 #if 1
 		{
 			//MMesh Mesh = MGeometryGenerator::Get().GenerateBox(50, 50, 50);
-			MMesh Mesh = MMeshBuilder::Get().LoadMesh(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Resources/sponza.obj"));
+			MMesh Mesh = MMeshBuilder::Get().LoadMesh(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Resources/sponza/"), TEXT("sponza.obj"));
+
+			GTestMesh = Mesh;
 
 			PositionVertexBuffer.SetRawVertexBuffer(Mesh.RenderData.Positions);
 			PositionVertexBuffer.AllocateResource();
@@ -333,6 +420,9 @@ void RRenderBackendD3D12::Init()
 			cout << " Test vertex buffer creation " << endl;
 		}
 #endif 
+
+
+
 		// Create synchronization objects and wait until assets have been uploaded to the GPU.
 		{
 			ThrowIfFailed(Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&Fence)));
@@ -347,27 +437,18 @@ void RRenderBackendD3D12::Init()
 
 			WaitForPreviousFence();
 			cout << " Test fence creation " << endl;
+
+			// Indicate that the back buffer will now be used to present.
+			auto Barrier = CD3DX12_RESOURCE_BARRIER::Transition(DepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_READ);
+			CommandLists[0].CommandList->ResourceBarrier(1, &Barrier);
+
+			CommandLists[0].Close();
+
+			// Execute the command list.
+			ID3D12CommandList* ppCommandLists[] = { CommandList };
+			CommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+			WaitForPreviousFence();
 		}
-
-
-		/// <summary>
-		///  Should make below as function of the batched barrier.
-		/// </summary>
-		auto& CommandAllocator = CommandLists[0].CommandAllocator;
-		auto& CommandList = CommandLists[0].CommandList;
-
-		CommandLists[0].Reset();
-
-		// Indicate that the back buffer will now be used to present.
-		auto Barrier = CD3DX12_RESOURCE_BARRIER::Transition(DepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_READ);
-		CommandLists[0].CommandList-> ResourceBarrier(1, &Barrier);
-
-		CommandLists[0].Close();
-
-		// Execute the command list.
-		ID3D12CommandList* ppCommandLists[] = { CommandList };
-		CommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
-		WaitForPreviousFence();
 	}
 }
 
@@ -400,18 +481,21 @@ void RRenderBackendD3D12::Teardown()
 
 void RRenderBackendD3D12::FunctionalityTestRender()
 {
+	CommandLists[0].Reset();
+
 	auto& CommandAllocator = CommandLists[0].CommandAllocator;
 	auto& CommandList = CommandLists[0].CommandList;
-
-	CommandLists[0].Reset();
 
 	// Set necessary state.
 	CommandList->SetGraphicsRootSignature(RootSignature.Get());
 	CommandList->SetPipelineState(PipelineStateObject.Get());
 
-	ID3D12DescriptorHeap* Heaps[] = { CBVHeap.Get() };
+	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
 	CommandList->SetDescriptorHeaps(_countof(Heaps), Heaps);
-	CommandList->SetGraphicsRootDescriptorTable(0, CBVHeap->GetGPUDescriptorHandleForHeapStart());
+
+	CD3DX12_GPU_DESCRIPTOR_HANDLE CbvSrvHandle(CBVSRVHeap->GetGPUDescriptorHandleForHeapStart());
+	CommandList->SetGraphicsRootDescriptorTable(0, CbvSrvHandle);
+	CommandList->SetGraphicsRootDescriptorTable(1, CbvSrvHandle.Offset( CBVSRVUAVDescriptorSize ));
 
 	CommandList->RSSetViewports(1, &Viewport);
 	CommandList->RSSetScissorRects(1, &ScissorRect);
@@ -441,7 +525,16 @@ void RRenderBackendD3D12::FunctionalityTestRender()
 	CommandList->IASetVertexBuffers(1, 1, &UVVertexBuffer.GetVertexBufferView());
 
 	CommandList->IASetIndexBuffer(&IndexBuffer.GetIndexBufferView());
-	CommandList->DrawIndexedInstanced(IndexBuffer.GetNumIndices(), 1, 0, 0, 0);
+
+
+	for (int32 iSection = 0; iSection < GTestMesh.Sections.size(); ++iSection)
+	{
+		CommandList->SetGraphicsRoot32BitConstant(2, iSection, 0);
+
+		const int32 NumIndices = GTestMesh.Sections[iSection].End - GTestMesh.Sections[iSection].Start;
+		const int32 StartIndex = GTestMesh.Sections[iSection].Start;
+		CommandList->DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
+	}
 
 
 	{
@@ -512,6 +605,9 @@ D3D12_RESOURCE_DESC CreateResourceDescD3D12(EResourceType ResourceType, EResourc
 	case RenderTexture3D:
 		Desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 		break;
+	case Texture2D:
+		Desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		break;
 	default:
 		break;
 	}
@@ -562,21 +658,51 @@ TRefCountPtr<ID3D12Resource> RRenderBackendD3D12::CreateUnderlyingResource(EReso
 		ClearValue.Color[3] = 0;
 	}
 
+	const bool bTextureResource = (ResourceType == EResourceType::Texture2D);
+
 	TRefCountPtr<ID3D12Resource> OutResource;
 	ThrowIfFailed(Device->CreateCommittedResource(
 		&HeapProperty,
 		D3D12_HEAP_FLAG_NONE,
 		&Desc,
-		D3D12_RESOURCE_STATE_COMMON,
-		&ClearValue,
+		bTextureResource ? D3D12_RESOURCE_STATE_COPY_DEST : D3D12_RESOURCE_STATE_COMMON,
+		bTextureResource ? nullptr : &ClearValue,
 		IID_PPV_ARGS(&OutResource)));
 
 	return OutResource;
 }
 
-TRefCountPtr<ID3D12Resource> RRenderBackendD3D12::CreateTexture2DResource(String&& Name, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height)
+TRefCountPtr<ID3D12Resource> RRenderBackendD3D12::CreateRenderTargetResource(String&& Name, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height)
 {
 	auto Resource = CreateUnderlyingResource(RenderTexture2D, ResourceFlag, Format, Width, Height, 1, 1);
 	Resource->SetName(Name.c_str());
+	return Resource;
+}
+
+TRefCountPtr<ID3D12Resource> RRenderBackendD3D12::CreateTexture2DResource(String&& Name, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height)
+{
+	auto Resource = CreateUnderlyingResource(Texture2D, ResourceFlag, Format, Width, Height, 1, 1);
+	Resource->SetName(Name.c_str());
+	return Resource;
+}
+
+TRefCountPtr<ID3D12Resource> RRenderBackendD3D12::CreateUploadHeap(uint32 UploadBufferSize)
+{
+	auto HeapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	auto ResourceDesc = CD3DX12_RESOURCE_DESC::Buffer(UploadBufferSize);
+
+	ComPtr<ID3D12Resource> Resource;
+	// Create the GPU upload buffer.
+	ThrowIfFailed(Device->CreateCommittedResource(
+		&HeapProperty,
+		D3D12_HEAP_FLAG_NONE,
+		&ResourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&Resource)));
+
+	Resource->SetName(TEXT("Upload heap"));
+
+	UploadHeapReferences.push_back(Resource);
 	return Resource;
 }

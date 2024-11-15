@@ -33,6 +33,8 @@ template<class T> using unordered_set = std::unordered_set<T>;
 
 #define endl std::endl
 
+using uint8 = unsigned char;
+
 using int32 = int;
 using uint32 = unsigned int;
 

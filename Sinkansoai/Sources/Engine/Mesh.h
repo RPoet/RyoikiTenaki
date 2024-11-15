@@ -13,11 +13,18 @@ struct MRenderData
 	vector< uint32 > Indices;
 };
 
+struct MSectionData
+{
+	uint32 Start;
+	uint32 End;
+};
+
+
 struct MMesh
 {
 public:
 	MRenderData RenderData;
-
+	vector< MSectionData > Sections;
 
 };
 

@@ -29,7 +29,7 @@ private:
 
 
 	// Make Heap manager. Scene ConstatnBuffers
-	TRefCountPtr<ID3D12DescriptorHeap> CBVHeap;
+	TRefCountPtr<ID3D12DescriptorHeap> CBVSRVHeap;
 
 	// Make Heap manager. backbuffer RTV Heap
 	TRefCountPtr<ID3D12DescriptorHeap> RTVHeap;
@@ -63,8 +63,12 @@ private:
 	TRefCountPtr<IDXGISwapChain3> SwapChain;
 	TRefCountPtr<ID3D12Resource> RenderTargets[NumBackBuffers];
 	TRefCountPtr<ID3D12Resource> DepthStencilBuffer;
-	
+
+	TRefCountPtr<ID3D12Resource> Texture;
+
 	RDynamicBufferD3D12 DynamicBuffer;
+
+	vector< TRefCountPtr<ID3D12Resource> > UploadHeapReferences;
 
 public:
 	RRenderBackendD3D12();
@@ -90,7 +94,12 @@ public:
 	TRefCountPtr<ID3D12Resource> CreateUnderlyingResource(EResourceType ResourceType, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height, uint32 NumMips, uint32 Depths);
 
 
+	TRefCountPtr<ID3D12Resource> CreateRenderTargetResource(String&& Name, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height);
 	TRefCountPtr<ID3D12Resource> CreateTexture2DResource(String&& Name, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height);
+
+
+	TRefCountPtr<ID3D12Resource> CreateUploadHeap(const uint32 UploadHeapSize);
+
 
 	friend class RRenderCommandListD3D12;
 };

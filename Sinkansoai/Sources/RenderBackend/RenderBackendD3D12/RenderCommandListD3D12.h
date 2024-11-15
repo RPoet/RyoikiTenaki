@@ -10,6 +10,7 @@ class RRenderBackendD3D12;
 class RRenderCommandListD3D12 : public RRenderCommandList
 {
 private:
+
 	ID3D12CommandAllocator* CommandAllocator{};
 	ID3D12GraphicsCommandList* CommandList{};
 
@@ -22,6 +23,7 @@ public:
 
 	void AllocateCommandLsit(RRenderBackendD3D12& Backend);
 
+	void CopyTexture(void* pData, ID3D12Resource* Dest, ID3D12Resource* UploadHeap, const uint32 TextureWidth, const uint32 Height, const uint32 PixelSizeInBytes);
 
 	void Reset();
 	void Close();

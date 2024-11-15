@@ -51,13 +51,13 @@ void MCamera::Tick(float DeltaTime)
 
 	if (MInput::Get().IsPressed('Z'))
 	{
-		this->Transform.Rotation.y -= Move * 0.01;
+		this->Transform.Rotation.y -= Move * 0.01f;
 	}
 
 
 	if (MInput::Get().IsPressed('X'))
 	{
-		this->Transform.Rotation.y += Move * 0.01;
+		this->Transform.Rotation.y += Move * 0.01f;
 	}
 
 	//cout << this->Transform.Position.x << " " << this->Transform.Position.y << " " << this->Transform.Position.z << endl;

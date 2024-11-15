@@ -40,6 +40,15 @@
     <Filter Include="Module">
       <UniqueIdentifier>{740daa89-39a7-4316-8036-2f2cd40b50c1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Render\Shader">
+      <UniqueIdentifier>{5914b688-e88c-4f88-a394-7b287986ee6a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Module\Texture">
+      <UniqueIdentifier>{8e90b0f5-4808-498f-bc09-7e0f22539274}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Module\Mesh">
+      <UniqueIdentifier>{0f0e91dd-0f34-46e6-82f0-223ab6af7aa1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Main.cpp">
@@ -135,8 +144,20 @@
     <ClCompile Include="Sources\Engine\Mesh.cpp">
       <Filter>Engine</Filter>
     </ClCompile>
-    <ClCompile Include="Sources\Module\MeshBuilder.cpp">
-      <Filter>Module</Filter>
+    <ClCompile Include="Sources\Module\Mesh\MeshBuilder.cpp">
+      <Filter>Module\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Module\Texture\TextureBuilder.cpp">
+      <Filter>Module\Texture</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Engine\Texture.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\TextureD3D12.cpp">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\Texture.cpp">
+      <Filter>RenderBackend</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -278,8 +299,23 @@
     <ClInclude Include="Sources\Engine\Mesh.h">
       <Filter>Engine</Filter>
     </ClInclude>
-    <ClInclude Include="Sources\Module\MeshBuilder.h">
-      <Filter>Module</Filter>
+    <ClInclude Include="Sources\Module\Mesh\MeshBuilder.h">
+      <Filter>Module\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Module\Mesh\TinyObjLoader.h">
+      <Filter>Module\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Module\Texture\TextureBuilder.h">
+      <Filter>Module\Texture</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Engine\Texture.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\TextureD3D12.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\Texture.h">
+      <Filter>RenderBackend</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
