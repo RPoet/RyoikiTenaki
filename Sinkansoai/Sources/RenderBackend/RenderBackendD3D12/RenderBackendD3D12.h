@@ -7,6 +7,8 @@
 #include "DynamicBufferD3D12.h"
 #include "ResourceBufferD3D12.h"
 
+#include "TextureD3D12.h"
+
 /// <summary>
 /// TO DO : Remove DirectXMath here
 /// </summary>
@@ -14,6 +16,15 @@
 using namespace DirectX;
 
 constexpr static int32 NumBackBuffers = 2;
+
+
+enum EDescriptorHeapAddressSpace
+{
+	ConstantBufferView  = 0,
+	ShaderResourceView  = 1,
+	UnorderedAccessView = 2,
+	Num = UnorderedAccessView + 1
+};
 
 class RRenderBackendD3D12 : public RRenderBackend, public Singleton<RRenderBackendD3D12>
 {
@@ -30,26 +41,15 @@ private:
 
 	// Make Heap manager. Scene ConstatnBuffers
 	TRefCountPtr<ID3D12DescriptorHeap> CBVSRVHeap;
+	D3D12_GPU_DESCRIPTOR_HANDLE AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::Num]{};
+	uint32 NumRegisteredHeaps[EDescriptorHeapAddressSpace::Num]{};
 
-	// Make Heap manager. backbuffer RTV Heap
 	TRefCountPtr<ID3D12DescriptorHeap> RTVHeap;
-
-	// Make Heap manager. backbuffer DSV Heap
 	TRefCountPtr<ID3D12DescriptorHeap> DSVHeap;
 
 	uint32 RTVDescriptorSize;
 	uint32 DSVDescriptorSize;
 	uint32 CBVSRVUAVDescriptorSize;
-
-	RVertexBufferD3D12 PositionVertexBuffer;
-	RVertexBufferD3D12 ColorVertexBuffer;
-	RVertexBufferD3D12 UVVertexBuffer;
-
-	RIndexBufferD3D12 IndexBuffer;
-
-	// App resources.
-	//TRefCountPtr<ID3D12Resource> VertexBuffer;
-	//D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
 
 	// Synchronization objects.
 	uint32 FrameIndex;
@@ -57,14 +57,13 @@ private:
 	ComPtr<ID3D12Fence> Fence;
 	UINT64 FenceValue;
 
-
 	CD3DX12_VIEWPORT Viewport;
 	CD3DX12_RECT ScissorRect;
 	TRefCountPtr<IDXGISwapChain3> SwapChain;
 	TRefCountPtr<ID3D12Resource> RenderTargets[NumBackBuffers];
 	TRefCountPtr<ID3D12Resource> DepthStencilBuffer;
 
-	TRefCountPtr<ID3D12Resource> Texture;
+	SharedPtr<RTexture2DD3D12> DefaultTexture;
 
 	RDynamicBufferD3D12 DynamicBuffer;
 
@@ -83,7 +82,14 @@ public:
 		return Device.Get();
 	}
 
+	RRenderCommandListD3D12& GetMainCommandList()
+	{
+		return CommandLists[0];
+	}
+
 	void WaitForPreviousFence();
+
+	void RenderFinish();
 
 
 	virtual RDynamicBuffer* GetGlobalDynamicBuffer() override
@@ -99,7 +105,6 @@ public:
 
 
 	TRefCountPtr<ID3D12Resource> CreateUploadHeap(const uint32 UploadHeapSize);
-
 
 	friend class RRenderCommandListD3D12;
 };

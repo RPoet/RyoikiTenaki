@@ -1,6 +1,6 @@
 
 
-cbuffer View : register(b0)
+cbuffer View : register(b0, space0)
 {
     float4x4 ViewToWorldMatrix;
     float4x4 WorldToViewMatrix;
@@ -13,15 +13,20 @@ cbuffer View : register(b0)
     float Pad;
 };
 
-cbuffer MaterialData : register(b0, space1)
+cbuffer SectionData : register(b0, space1)
+{
+    uint SectionIndex;
+};
+
+cbuffer MaterialData : register(b0, space2)
 {
     uint MaterialIndex;
 };
 
 SamplerState Sampler : register(s0);
-Texture2D TextureDiffuse : register(t0, space0);
 
-//ConstantBuffer<MaterialData> MaterialConstants : register(b0, space0);
+Texture2D DefaultTexture : register(t0);
+Texture2D DiffuseMaterials[25] : register(t1);
 
 struct PSInput
 {
@@ -63,12 +68,17 @@ PSInput VSMain(float3 Position : POSITION, float2 UV : TEXCOORD)
 
 
 float4 PSMain(PSInput In) : SV_TARGET
-{
-    const uint Index = MaterialIndex;
-
+{ 
     const float DepthFade = In.Position.z * 100;
+    
+    const uint Index = MaterialIndex;
     const float3 Color = GetDebugColor(Index % 13);
 
-    const float4 TextureColor = TextureDiffuse.Sample(Sampler, In.UV);
-    return float4(TextureColor.xyz * Color, 1);
+    const float4 TextureColor = DefaultTexture.Sample(Sampler, In.UV);
+    const float4 DiffuseColor = DiffuseMaterials[MaterialIndex].Sample(Sampler, In.UV);
+#if 0
+    return float4(In.UV, 0, 1);
+#else
+    return float4(DiffuseColor.xyz, 1);
+ #endif
 }

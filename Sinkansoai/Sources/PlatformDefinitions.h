@@ -18,6 +18,9 @@ template<class Key, class T> using unordered_map = std::unordered_map<Key, T>;
 #include <unordered_set>
 template<class T> using unordered_set = std::unordered_set<T>;
 
+#include <memory>
+template<class T> using SharedPtr = std::shared_ptr<T>;
+
 #include <assert.h>
 
 #define TEXT(x) L##x

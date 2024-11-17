@@ -87,30 +87,32 @@ MMesh MMeshBuilder::LoadMesh(const String& Path, const String& ModelName)
 	std::string CharPath(ConnectedString.begin(), ConnectedString.end());
 
 	tinyobj::attrib_t attributes;
-	std::vector<tinyobj::shape_t> shapes; // section.
-	std::vector<tinyobj::material_t> materials;
+	std::vector<tinyobj::shape_t> Shapes; // section.
+	std::vector<tinyobj::material_t> Materials;
 	std::string warnings;
 	std::string errors;
 
-	tinyobj::LoadObj(&attributes, &shapes, &materials, &warnings, &errors, CharPath.c_str(), Mtl.c_str());
+	tinyobj::LoadObj(&attributes, &Shapes, &Materials, &warnings, &errors, CharPath.c_str(), Mtl.c_str());
 
 	unordered_map<Vertex, uint32_t> UniqueVertices = {};
 
 	std::array<uint32, 3> FaceIndices;
 
 	//TextureBuilder;
-
-	for (auto& Shape : shapes)
+	std::set<uint32> MaterialSet;
+	for (auto& Shape : Shapes)
 	{
 		auto& Mesh = Shape.mesh;
 		int32 NumAddedIndices = 0;
 		
 		int32 IndexStart = Out.RenderData.Indices.size();
 
+		MaterialSet.clear();
+
 		for (int j = 0; j < Mesh.indices.size(); j++)
 		{
 			tinyobj::index_t i = Mesh.indices[j];
-
+	
 			float3 position = {
 				attributes.vertices[i.vertex_index * 3],
 				attributes.vertices[i.vertex_index * 3 + 1],
@@ -135,6 +137,9 @@ MMesh MMeshBuilder::LoadMesh(const String& Path, const String& ModelName)
 				Out.RenderData.UV0.push_back(vertex.texCoord);
 			}
 
+
+			//MaterialSet.insert();
+
 			FaceIndices[NumAddedIndices++] = UniqueVertices[vertex];
 
 			if (NumAddedIndices == 3)
@@ -147,10 +152,29 @@ MMesh MMeshBuilder::LoadMesh(const String& Path, const String& ModelName)
 		}
 
 		int32 IndexEnd = Out.RenderData.Indices.size();
-
-		MSectionData SectionData{ IndexStart, IndexEnd };
+		int32 MaterialId = Mesh.material_ids[0]; // Assume material id per section would be same.
+		MSectionData SectionData{ IndexStart, IndexEnd,  MaterialId };
 		Out.Sections.push_back(SectionData);
 	}
 
+
+	{
+		auto&& TexturePathBase = Path;
+
+		for (auto& Material : Materials)
+		{
+			uint32 Index = Out.Materials.size();
+			Out.Materials.emplace_back();
+			Out.Materials[Index].bValid = false;
+			if (Material.diffuse_texname.length() > 0)
+			{
+				Out.Materials[Index].bValid = true;
+
+				auto&& DiffuseTexture = MTextureBuilder::Get().LoadTexture(TexturePathBase, String(Material.diffuse_texname.begin(), Material.diffuse_texname.end()));
+				Out.Materials[Index].Textures.push_back(DiffuseTexture);
+			}
+		}
+	}
+	
 	return Out;
 }

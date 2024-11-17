@@ -1,8 +1,6 @@
 #pragma once
 #include "RenderResource.h"
 
-
-
 class RVertexBuffer : public RRenderResource
 {
 protected:
@@ -84,7 +82,7 @@ public:
 		return sizeof(IndexType) * IndexBuffer.size();
 	}
 
-	void SetIndexBuffer(vector< IndexType >& InIndexBuffer)
+	void SetIndexBuffer(const vector< IndexType >& InIndexBuffer)
 	{
 		IndexBuffer = InIndexBuffer;
 	}

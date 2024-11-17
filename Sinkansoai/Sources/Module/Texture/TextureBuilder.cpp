@@ -35,7 +35,10 @@ public:
 Tga::Tga(const char* FilePath)
 {
     std::fstream hFile(FilePath, std::ios::in | std::ios::binary);
-    if (!hFile.is_open()) { throw std::invalid_argument("File Not Found."); }
+    if (!hFile.is_open())
+    {
+        assert(false && " File not exists ");
+    }
 
     std::uint8_t Header[18] = { 0 };
     std::vector<std::uint8_t> ImageData;
@@ -49,6 +52,7 @@ Tga::Tga(const char* FilePath)
         BitsPerPixel = Header[16];
         width = Header[13] * 256 + Header[12];
         height = Header[15] * 256 + Header[14];
+
         size = ((width * BitsPerPixel + 31) / 32) * 4 * height;
 
         if ((BitsPerPixel != 24) && (BitsPerPixel != 32))
@@ -57,9 +61,31 @@ Tga::Tga(const char* FilePath)
             throw std::invalid_argument("Invalid File Format. Required: 24 or 32 Bit Image.");
         }
 
-        ImageData.resize(size);
         ImageCompressed = false;
-        hFile.read(reinterpret_cast<char*>(ImageData.data()), size);
+
+        if (BitsPerPixel == 24)
+        {
+            std::vector<std::uint8_t> ImageWOAlpha;
+            ImageWOAlpha.resize(size);
+            hFile.read(reinterpret_cast<char*>(ImageWOAlpha.data()), size);
+
+            ImageData.resize(width * height * 4);
+            for (int32 i = 0; i < ImageWOAlpha.size() / 3; i++)
+            {
+                int32 BaseIndexWOAlpha = i * 3;
+                int32 BaseIndex = i * 4;
+                ImageData[BaseIndex + 0] = ImageWOAlpha[BaseIndexWOAlpha + 0];
+                ImageData[BaseIndex + 1] = ImageWOAlpha[BaseIndexWOAlpha + 1];
+                ImageData[BaseIndex + 2] = ImageWOAlpha[BaseIndexWOAlpha + 2];
+                ImageData[BaseIndex + 3] = 1;
+            }
+        }
+        else
+        {
+            ImageData.resize(size);
+            hFile.read(reinterpret_cast<char*>(ImageData.data()), size);
+        }
+
     }
     else if (!std::memcmp(IsCompressed, &Header, sizeof(IsCompressed)))
     {
@@ -154,6 +180,8 @@ void MTextureBuilder::Teardown()
 
 MTexture MTextureBuilder::LoadTexture(const String& Path, const String& TextureName)
 {
+    // add assert to check file extension. this is for tga only.
+
     auto CombinedPath = Path + TextureName;
     Tga TGATexture(std::string(CombinedPath.begin(), CombinedPath.end()).c_str());
 
@@ -161,6 +189,7 @@ MTexture MTextureBuilder::LoadTexture(const String& Path, const String& TextureN
     Texture.Pixels = TGATexture.GetPixels();
     Texture.Width = TGATexture.GetWidth();
     Texture.Height = TGATexture.GetHeight();
+    Texture.Size = 0;
     Texture.BitsPerPixel = 32;
 
 	return Texture;
