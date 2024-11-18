@@ -18,6 +18,13 @@ using namespace DirectX;
 constexpr static int32 NumBackBuffers = 2;
 
 
+enum EGraphicsPipeline
+{
+	Prepass = 0,
+	Basepass = 1,
+	NumPasses = Basepass + 1
+};
+
 enum EDescriptorHeapAddressSpace
 {
 	ConstantBufferView  = 0,
@@ -26,6 +33,39 @@ enum EDescriptorHeapAddressSpace
 	Num = UnorderedAccessView + 1
 };
 
+class RGraphicsPipeline
+{
+private:
+
+	TRefCountPtr<ID3D12RootSignature> RootSignature;
+
+	TRefCountPtr<ID3D12PipelineState> PipelineStateObject;
+
+public:
+
+
+	void SetRootSignature(ID3D12RootSignature* RootSignature)
+	{
+		this->RootSignature = RootSignature;
+	}
+
+	void SetPSO(ID3D12PipelineState* PipelineStateObject)
+	{
+		this->PipelineStateObject = PipelineStateObject;
+	}
+
+	TRefCountPtr<ID3D12RootSignature>& GetRootSignature()
+	{
+		return RootSignature;
+	}
+
+	TRefCountPtr<ID3D12PipelineState>& GetPipelineStateObject()
+	{
+		return PipelineStateObject;
+	}
+};
+
+
 class RRenderBackendD3D12 : public RRenderBackend, public Singleton<RRenderBackendD3D12>
 {
 private:
@@ -33,23 +73,10 @@ private:
 	vector<RRenderCommandListD3D12> CommandLists;
 	TRefCountPtr<ID3D12CommandQueue> CommandQueue;
 
+	vector< RGraphicsPipeline > GraphicsPipelines;
 
-	// Should be moved and managed separated class
-	TRefCountPtr<ID3D12RootSignature> RootSignature;
-	TRefCountPtr<ID3D12PipelineState> PipelineStateObject;
-
-
-	// Make Heap manager. Scene ConstatnBuffers
-	TRefCountPtr<ID3D12DescriptorHeap> CBVSRVHeap;
-	D3D12_GPU_DESCRIPTOR_HANDLE AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::Num]{};
-	uint32 NumRegisteredHeaps[EDescriptorHeapAddressSpace::Num]{};
-
-	TRefCountPtr<ID3D12DescriptorHeap> RTVHeap;
-	TRefCountPtr<ID3D12DescriptorHeap> DSVHeap;
-
-	uint32 RTVDescriptorSize;
-	uint32 DSVDescriptorSize;
-	uint32 CBVSRVUAVDescriptorSize;
+	//TRefCountPtr<ID3D12RootSignature> RootSignature;
+	//TRefCountPtr<ID3D12PipelineState> PipelineStateObject;
 
 	// Synchronization objects.
 	uint32 FrameIndex;
@@ -63,11 +90,24 @@ private:
 	TRefCountPtr<ID3D12Resource> RenderTargets[NumBackBuffers];
 	TRefCountPtr<ID3D12Resource> DepthStencilBuffer;
 
-	SharedPtr<RTexture2DD3D12> DefaultTexture;
 
 	RDynamicBufferD3D12 DynamicBuffer;
 
 	vector< TRefCountPtr<ID3D12Resource> > UploadHeapReferences;
+
+
+	// Make Heap manager. Scene ConstatnBuffers
+
+	TRefCountPtr<ID3D12DescriptorHeap> RTVHeap;
+	TRefCountPtr<ID3D12DescriptorHeap> DSVHeap;
+	TRefCountPtr<ID3D12DescriptorHeap> CBVSRVHeap;
+	D3D12_GPU_DESCRIPTOR_HANDLE AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::Num]{};
+	uint32 NumRegisteredHeaps[EDescriptorHeapAddressSpace::Num]{};
+
+	uint32 RTVDescriptorSize;
+	uint32 DSVDescriptorSize;
+	uint32 CBVSRVUAVDescriptorSize;
+
 
 public:
 	RRenderBackendD3D12();
@@ -75,6 +115,9 @@ public:
 
 	virtual void Init() override;
 	virtual void Teardown() override;
+
+	void Prepass();
+	void Basepass();
 	virtual void FunctionalityTestRender() override;
 
 	ID3D12Device* GetDevice()
@@ -105,6 +148,7 @@ public:
 
 
 	TRefCountPtr<ID3D12Resource> CreateUploadHeap(const uint32 UploadHeapSize);
+
 
 	friend class RRenderCommandListD3D12;
 };

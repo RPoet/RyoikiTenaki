@@ -61,5 +61,11 @@ struct MStartupParams
 
 extern MStartupParams GStartupParams;
 
+enum EShaderType
+{
+	VS,
+	PS
+};
+
 
 #define verify(x) assert( x == S_OK )

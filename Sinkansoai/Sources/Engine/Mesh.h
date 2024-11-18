@@ -1,6 +1,7 @@
 #pragma once
 #include "../PlatformDefinitions.h"
 #include "../RenderBackend/ResourceBuffer.h"
+#include "../RenderBackend/DynamicBuffer.h"
 #include "../RenderBackend/Texture.h"
 
 #include "Texture.h"
@@ -10,6 +11,8 @@ struct MMaterial
 public:
 	vector< MTexture > Textures;
 	bool bValid = false;
+
+	vector< float3 > Colors;
 };
 
 struct MRenderData
@@ -44,6 +47,7 @@ struct RMaterial
 {
 public:
 	vector< SharedPtr< RTexture > > Textures;
+	vector< float3 > Colors;
 	bool bVaild;
 };
 
@@ -54,7 +58,6 @@ public:
 	RVertexBuffer* UVVertexBuffer;
 	RVertexBuffer* NormalVertexBuffer;
 	RVertexBuffer* TangentVertexBuffer;
-
 	RIndexBuffer* IndexBuffer;
 
 	vector< MSectionData > Sections;
@@ -77,8 +80,8 @@ public:
 		Sections = Mesh.Sections;
 	}
 
-	template<class LambdaType>
-	void InitMaterials(vector<MMaterial>& InMaterials, LambdaType&& Func)
+	template<class SRVLambdaType>
+	void InitMaterials(vector<MMaterial>& InMaterials, SRVLambdaType&& SRVFunc)
 	{
 		Materials.reserve(InMaterials.size());
 
@@ -97,7 +100,14 @@ public:
 				for (auto& RawTexture : Material.Textures)
 				{
 					MaterialProxy.Textures.emplace_back();
-					Func(MaterialProxy.Textures[MaterialProxy.Textures.size() - 1], RawTexture);
+					SRVFunc(MaterialProxy.Textures[MaterialProxy.Textures.size() - 1], RawTexture);
+				}
+
+				MaterialProxy.Colors.reserve(Material.Colors.size());
+
+				for (const auto& Color : Material.Colors)
+				{
+					MaterialProxy.Colors.emplace_back(Color);
 				}
 			}
 		}

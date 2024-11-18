@@ -30,6 +30,7 @@ public:
 	void CopyTexture(void* pData, ID3D12Resource* Dest, ID3D12Resource* UploadHeap, const uint32 TextureWidth, const uint32 Height, const uint32 PixelSizeInBytes);
 
 
+	void SetGraphicsPipeline(RGraphicsPipeline& Pipeline);
 	void SetPrimitiveTopology(PrimitiveType Type);
 	void SetVertexBuffer(uint32 Slot, RVertexBuffer* Buffer);
 	void SetIndexBuffer(RIndexBuffer* Buffer);

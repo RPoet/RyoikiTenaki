@@ -24,3 +24,4 @@ T* CastAsD3D12(U* Object)
 class RVertexBuffer;
 class RIndexBuffer;
 class RTexture;
+class RGraphicsPipeline;

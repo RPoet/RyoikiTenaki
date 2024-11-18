@@ -34,6 +34,7 @@
     <ClCompile Include="Sources\Main.cpp" />
     <ClCompile Include="Sources\Module.cpp" />
     <ClCompile Include="Sources\Module\Mesh\MeshBuilder.cpp" />
+    <ClCompile Include="Sources\Module\ShaderCompiler\ShaderCompiler.cpp" />
     <ClCompile Include="Sources\Module\Texture\TextureBuilder.cpp" />
     <ClCompile Include="Sources\ObjectBase.cpp" />
     <ClCompile Include="Sources\RenderBackend\DynamicBuffer.cpp" />
@@ -77,6 +78,7 @@
     <ClInclude Include="Sources\Module.h" />
     <ClInclude Include="Sources\Module\Mesh\MeshBuilder.h" />
     <ClInclude Include="Sources\Module\Mesh\TinyObjLoader.h" />
+    <ClInclude Include="Sources\Module\ShaderCompiler\ShaderCompiler.h" />
     <ClInclude Include="Sources\Module\Texture\TextureBuilder.h" />
     <ClInclude Include="Sources\ObjectBase.h" />
     <ClInclude Include="Sources\PlatformDefinitions.h" />

@@ -49,6 +49,9 @@
     <Filter Include="Module\Mesh">
       <UniqueIdentifier>{0f0e91dd-0f34-46e6-82f0-223ab6af7aa1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Module\ShaderCompiler">
+      <UniqueIdentifier>{1d6311df-9110-481e-8c36-bf287a9207df}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Main.cpp">
@@ -158,6 +161,9 @@
     </ClCompile>
     <ClCompile Include="Sources\RenderBackend\Texture.cpp">
       <Filter>RenderBackend</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Module\ShaderCompiler\ShaderCompiler.cpp">
+      <Filter>Module\ShaderCompiler</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -316,6 +322,9 @@
     </ClInclude>
     <ClInclude Include="Sources\RenderBackend\Texture.h">
       <Filter>RenderBackend</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Module\ShaderCompiler\ShaderCompiler.h">
+      <Filter>Module\ShaderCompiler</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

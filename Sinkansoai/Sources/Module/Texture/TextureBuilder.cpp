@@ -164,6 +164,42 @@ Tga::Tga(const char* FilePath)
     this->Pixels = ImageData;
 }
 
+vector<uint8> MTextureBuilder::GenerateDefaultTexture(const uint32 Width, const uint32 Height, const uint32 PixelSizeInBytes)
+{
+    const uint32 rowPitch = Width * PixelSizeInBytes;
+    const uint32 cellPitch = rowPitch >> 3;        // The width of a cell in the checkboard texture.
+    const uint32 cellHeight = Width >> 3;    // The height of a cell in the checkerboard texture.
+    const uint32 textureSize = rowPitch * Height;
+
+    vector<uint8> data(textureSize);
+    uint8* pData = &data[0];
+
+    for (uint32 n = 0; n < textureSize; n += PixelSizeInBytes)
+    {
+        uint32 x = n % rowPitch;
+        uint32 y = n / rowPitch;
+        uint32 i = x / cellPitch;
+        uint32 j = y / cellHeight;
+
+        if (i % 2 == j % 2)
+        {
+            pData[n] = 0x00;        // R
+            pData[n + 1] = 0x00;    // G
+            pData[n + 2] = 0x00;    // B
+            pData[n + 3] = 0xff;    // A
+        }
+        else
+        {
+            pData[n] = 0xff;        // R
+            pData[n + 1] = 0xff;    // G
+            pData[n + 2] = 0xff;    // B
+            pData[n + 3] = 0xff;    // A
+        }
+    }
+
+    return data;
+}
+
 void MTextureBuilder::Init()
 {
 	Super::Init();

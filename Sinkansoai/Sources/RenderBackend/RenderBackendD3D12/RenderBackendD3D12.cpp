@@ -2,52 +2,18 @@
 #include "../../Misc/Geometry.h"
 #include "../../Module/Mesh/MeshBuilder.h"
 #include "../../Module/Texture/TextureBuilder.h"
+#include "../../Module/ShaderCompiler/ShaderCompiler.h"
 
 #include "RenderBackendD3D12.h"
 #include "RenderCommandListD3D12.h"
-#include <d3dcompiler.h>
 
 #pragma comment ( lib, "d3d12.lib")
-#pragma comment ( lib, "D3DCompiler.lib")
 #pragma comment ( lib, "dxgi.lib")
 
 RMesh RenderMesh;
+SharedPtr<RTexture2DD3D12> DefaultTexture;
 
-std::vector<UINT8> GenerateTextureData(const uint32 Width, const uint32 Height, const uint32 PixelSizeInBytes)
-{
-	const UINT rowPitch = Width * PixelSizeInBytes;
-	const UINT cellPitch = rowPitch >> 3;        // The width of a cell in the checkboard texture.
-	const UINT cellHeight = Width >> 3;    // The height of a cell in the checkerboard texture.
-	const UINT textureSize = rowPitch * Height;
 
-	std::vector<UINT8> data(textureSize);
-	UINT8* pData = &data[0];
-
-	for (UINT n = 0; n < textureSize; n += PixelSizeInBytes)
-	{
-		UINT x = n % rowPitch;
-		UINT y = n / rowPitch;
-		UINT i = x / cellPitch;
-		UINT j = y / cellHeight;
-
-		if (i % 2 == j % 2)
-		{
-			pData[n] = 0x00;        // R
-			pData[n + 1] = 0x00;    // G
-			pData[n + 2] = 0x00;    // B
-			pData[n + 3] = 0xff;    // A
-		}
-		else
-		{
-			pData[n] = 0xff;        // R
-			pData[n + 1] = 0xff;    // G
-			pData[n + 2] = 0xff;    // B
-			pData[n + 3] = 0xff;    // A
-		}
-	}
-
-	return data;
-}
 
 RRenderBackendD3D12::RRenderBackendD3D12()
 	: DynamicBuffer(*this, TEXT("Global Buffer"))
@@ -144,7 +110,19 @@ void RRenderBackendD3D12::Init()
 
 			cout << "Swap chain init success" << " SwapChain First Backbuffer Index : " << FrameIndex << endl;
 		}
+		
+		{
+			DynamicBuffer.Allocate(D3D12MaxConstantBufferSize);
 
+			// Default Texture
+			{
+				DefaultTexture = SharedPtr<RTexture2DD3D12>(new RTexture2DD3D12(*this, TEXT("CheckerTexture"), 256, 256, 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::None));
+				DefaultTexture->AllocateResource();
+
+				auto RawTexture = MTextureBuilder::Get().GenerateDefaultTexture(256, 256, 4);
+				DefaultTexture->StreamTexture(RawTexture.data());
+			}
+		}
 
 		// Create testing resources
 		{
@@ -163,22 +141,12 @@ void RRenderBackendD3D12::Init()
 			RenderMesh.InitMaterials(Mesh.Materials,
 				[&](SharedPtr< RTexture >& Resource, MTexture& RawTexture)
 				{
-					Resource = SharedPtr<RTexture2DD3D12>(new RTexture2DD3D12(*this, TEXT("CheckerTexture"), RawTexture.Width, RawTexture.Height, 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::None));
+					Resource = SharedPtr<RTexture2DD3D12>(new RTexture2DD3D12(*this, TEXT("CheckerTexture"), RawTexture.Width, RawTexture.Height, 1, DXGI_FORMAT_B8G8R8A8_UNORM, EResourceFlag::None));
 
 					Resource->AllocateResource();
 					Resource->StreamTexture(RawTexture.Pixels.data());
 				});
 
-			DynamicBuffer.Allocate(D3D12MaxConstantBufferSize);
-
-
-			// Default Texture
-			{
-				auto RawTexture = GenerateTextureData(256, 256, 4);
-				DefaultTexture = SharedPtr<RTexture2DD3D12>(new RTexture2DD3D12(*this, TEXT("CheckerTexture"), 256, 256, 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::None));
-				DefaultTexture->AllocateResource();
-				DefaultTexture->StreamTexture(RawTexture.data());
-			}
 
 
 			cout << " Test resource creation done " << endl;
@@ -300,6 +268,10 @@ void RRenderBackendD3D12::Init()
 		}
 
 
+
+		GraphicsPipelines.emplace_back();
+		GraphicsPipelines.emplace_back();
+
 		// Create signature.
 		{
 			D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureData = {};
@@ -319,13 +291,14 @@ void RRenderBackendD3D12::Init()
 
 			//Ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, NumRegisteredHeaps[EDescriptorHeapAddressSpace::UnorderedAccessView], 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
+
 			CD3DX12_ROOT_PARAMETER1 RootParameters[5]{};
 			RootParameters[0].InitAsDescriptorTable(1, &Ranges[0], D3D12_SHADER_VISIBILITY_VERTEX);
 			RootParameters[1].InitAsDescriptorTable(1, &Ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);
 
-			//RootParameters[2].InitAsDescriptorTable(1, &Ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);
+			//RootParameters[2].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE,D3D12_SHADER_VISIBILITY_PIXEL);
 
-			RootParameters[3].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+			RootParameters[3].InitAsConstants(3, 0, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 			RootParameters[4].InitAsConstants(1, 0, 2, D3D12_SHADER_VISIBILITY_PIXEL);
 
 			// Allow input layout and deny uneccessary access to certain pipeline stages.
@@ -363,45 +336,45 @@ void RRenderBackendD3D12::Init()
 				ThrowIfFailed(S_FALSE);
 			}
 
-			ThrowIfFailed(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&RootSignature)));
+			ThrowIfFailed(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&GraphicsPipelines[EGraphicsPipeline::Prepass].GetRootSignature())));
+			ThrowIfFailed(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&GraphicsPipelines[EGraphicsPipeline::Basepass].GetRootSignature())));
 
 			cout << "Rootsignature creation success" << endl;
 		}
 
 
-		// Create the pipeline state, which includes compiling and loading shaders.
+		// Prepass PSO
 		{
-			ComPtr<ID3DBlob> VertexShader;
-			ComPtr<ID3DBlob> PixelShader;
+			TRefCountPtr<ID3DBlob> VertexShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/PrepassRendering.hlsl"), TEXT("VSMain"), EShaderType::VS);
 
-#if defined(_DEBUG)
-			// Enable better shader debugging with the graphics debugging tools.
-			UINT CompileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-			UINT compileFlags = 0;
-#endif
-
-
-			ComPtr<ID3DBlob> Error;
-			D3DCompileFromFile(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), nullptr, nullptr, "VSMain", "vs_5_1", CompileFlags, 0, &VertexShader, &Error);
-
-			if (Error)
+			D3D12_INPUT_ELEMENT_DESC InputElementDescs[] =
 			{
-				cout << (char*)Error->GetBufferPointer() << endl;
-				Error->Release();
-				ThrowIfFailed(S_FALSE);
-			}
+				{ "POSITION",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			};
 
+			// Describe and create the graphics pipeline state object (PSO).
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {};
+			PSODesc.InputLayout = { InputElementDescs, _countof(InputElementDescs) };
+			PSODesc.pRootSignature = GraphicsPipelines[EGraphicsPipeline::Prepass].GetRootSignature().Get();
+			PSODesc.VS = CD3DX12_SHADER_BYTECODE(VertexShader.Get());
+			PSODesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+			PSODesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSODesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+			PSODesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+			PSODesc.DSVFormat = DepthFormat;
+			PSODesc.SampleDesc.Count = 1;
+			PSODesc.SampleMask = UINT_MAX;
+			PSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSODesc.NumRenderTargets = 0;
+			ThrowIfFailed(Device->CreateGraphicsPipelineState(&PSODesc, IID_PPV_ARGS(&GraphicsPipelines[EGraphicsPipeline::Prepass].GetPipelineStateObject())));
 
-			D3DCompileFromFile(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), nullptr, nullptr, "PSMain", "ps_5_1", CompileFlags, 0, &PixelShader, &Error);
+			cout << " Basepass done " << endl;
+		}
 
-			if (Error)
-			{
-				cout << (char*)Error->GetBufferPointer() << endl;
-				Error->Release();
-				ThrowIfFailed(S_FALSE);
-			}
-
+		// Basepass PSO
+		{
+			TRefCountPtr<ID3DBlob> VertexShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), TEXT("VSMain"), EShaderType::VS);
+			TRefCountPtr<ID3DBlob> PixelShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), TEXT("PSMain"), EShaderType::PS);
 
 			// Define the vertex input layout.
 			D3D12_INPUT_ELEMENT_DESC InputElementDescs[] =
@@ -414,24 +387,23 @@ void RRenderBackendD3D12::Init()
 			// Describe and create the graphics pipeline state object (PSO).
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {};
 			PSODesc.InputLayout = { InputElementDescs, _countof(InputElementDescs) };
-			PSODesc.pRootSignature = RootSignature.Get();
+			PSODesc.pRootSignature = GraphicsPipelines[EGraphicsPipeline::Prepass].GetRootSignature().Get();
 			PSODesc.VS = CD3DX12_SHADER_BYTECODE(VertexShader.Get());
 			PSODesc.PS = CD3DX12_SHADER_BYTECODE(PixelShader.Get());
 			PSODesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 			PSODesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSODesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+			PSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 			PSODesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-
 			PSODesc.DSVFormat = DepthFormat;
-
 			PSODesc.SampleMask = UINT_MAX;
 			PSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 			PSODesc.NumRenderTargets = 1;
 			PSODesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 			PSODesc.SampleDesc.Count = 1;
-			ThrowIfFailed(Device->CreateGraphicsPipelineState(&PSODesc, IID_PPV_ARGS(&PipelineStateObject)));
+			ThrowIfFailed(Device->CreateGraphicsPipelineState(&PSODesc, IID_PPV_ARGS(&GraphicsPipelines[EGraphicsPipeline::Basepass].GetPipelineStateObject())));
 
-			cout << " PSO Createion done" << endl;
+			cout << " Basepass done " << endl;
 		}
 
 
@@ -486,45 +458,64 @@ void RRenderBackendD3D12::Teardown()
 	cout << "D3D12 Renderbackend Exit" << endl;
 }
 
-void RRenderBackendD3D12::FunctionalityTestRender()
+void RRenderBackendD3D12::Prepass()
 {
-	CommandLists[0].Reset();
-
 	auto& D3D12CommandList = CommandLists[0];
-	auto& CommandAllocator = CommandLists[0].CommandAllocator;
 	auto& CommandList = CommandLists[0].CommandList;
 
-	// Set necessary state.
-	CommandList->SetGraphicsRootSignature(RootSignature.Get());
-	CommandList->SetPipelineState(PipelineStateObject.Get());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
+	CommandList->ClearDepthStencilView(DSVHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 0, 0, 0, nullptr);
+	CommandList->OMSetRenderTargets(0, nullptr, false, &DSVHandle);
+
+	D3D12CommandList.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::Prepass]);
+
+	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
+	CommandList->SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList->SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
+
+	auto& Mesh = RenderMesh;
+	D3D12CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	D3D12CommandList.SetVertexBuffer(0, Mesh.PositionVertexBuffer);
+	D3D12CommandList.SetIndexBuffer(Mesh.IndexBuffer);
+
+	for (int32 iSection = 0; iSection < Mesh.Sections.size(); ++iSection)
+	{
+		const auto& Section = Mesh.Sections[iSection];
+		const int32 NumIndices = Section.End - Section.Start;
+		const int32 StartIndex = Section.Start;	
+		CommandList->DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
+	}
+
+	{
+		CD3DX12_RESOURCE_BARRIER Barriers[] =
+		{
+			CD3DX12_RESOURCE_BARRIER::Transition(DepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_READ)
+		};
+		CommandList->ResourceBarrier(_countof(Barriers), Barriers);
+	}
+}
+
+
+void RRenderBackendD3D12::Basepass()
+{
+	auto& D3D12CommandList = CommandLists[0];
+	auto& CommandList = CommandLists[0].CommandList;
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE RTVHandle(RTVHeap->GetCPUDescriptorHandleForHeapStart(), FrameIndex, RTVDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
+
+	// Record commands.
+	const float ClearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+
+	CommandList->ClearRenderTargetView(RTVHandle, ClearColor, 0, nullptr);
+	CommandList->OMSetRenderTargets(1, &RTVHandle, false, &DSVHandle);
 
 	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
 	CommandList->SetDescriptorHeaps(_countof(Heaps), Heaps);
 	CommandList->SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
 	CommandList->SetGraphicsRootDescriptorTable(1, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ShaderResourceView]);
 
-	CommandList->RSSetViewports(1, &Viewport);
-	CommandList->RSSetScissorRects(1, &ScissorRect);
-
-	// Indicate that the back buffer will be used as a render target.
-	{
-		CD3DX12_RESOURCE_BARRIER Barriers[] = 
-		{
-			CD3DX12_RESOURCE_BARRIER::Transition(RenderTargets[FrameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET),
-			CD3DX12_RESOURCE_BARRIER::Transition(DepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE)
-		};
-		CommandList->ResourceBarrier(2, Barriers);
-	}
-
-	CD3DX12_CPU_DESCRIPTOR_HANDLE RTVHandle(RTVHeap->GetCPUDescriptorHandleForHeapStart(), FrameIndex, RTVDescriptorSize);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
-
-	CommandList->OMSetRenderTargets(1, &RTVHandle, false, &DSVHandle);
-
-	// Record commands.
-	const float ClearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-	CommandList->ClearRenderTargetView(RTVHandle, ClearColor, 0, nullptr);
-	CommandList->ClearDepthStencilView(DSVHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 0, 0, 0, nullptr);
+	D3D12CommandList.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::Basepass]);
 
 	auto& Mesh = RenderMesh;
 	D3D12CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -534,11 +525,12 @@ void RRenderBackendD3D12::FunctionalityTestRender()
 
 	for (int32 iSection = 0; iSection < Mesh.Sections.size(); ++iSection)
 	{
-		auto& Section = Mesh.Sections[iSection];
+		const auto& Section = Mesh.Sections[iSection];
+		const auto& Color = Mesh.Materials[Section.MaterialId].Colors.size() > 0 ? Mesh.Materials[Section.MaterialId].Colors[0] : float3(1, 1, 1);
 		const int32 NumIndices = Section.End - Section.Start;
 		const int32 StartIndex = Section.Start;
 
-		CommandList->SetGraphicsRoot32BitConstant(3, Section.MaterialId, 0);
+		CommandList->SetGraphicsRoot32BitConstants(3, sizeof(Color) / 4, &Color, 0);
 		CommandList->SetGraphicsRoot32BitConstant(4, Section.MaterialId, 0);
 		CommandList->DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
 	}
@@ -547,13 +539,34 @@ void RRenderBackendD3D12::FunctionalityTestRender()
 		CD3DX12_RESOURCE_BARRIER Barriers[] =
 		{
 			CD3DX12_RESOURCE_BARRIER::Transition(RenderTargets[FrameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT),
-			CD3DX12_RESOURCE_BARRIER::Transition(DepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_READ)
 		};
-		CommandList->ResourceBarrier(2, Barriers);
+		CommandList->ResourceBarrier(_countof(Barriers), Barriers);
 	}
+}
+
+void RRenderBackendD3D12::FunctionalityTestRender()
+{
+	CommandLists[0].Reset();
+
+	auto& D3D12CommandList = CommandLists[0];
+	auto& CommandList = CommandLists[0].CommandList;
+	{
+		CD3DX12_RESOURCE_BARRIER Barriers[] =
+		{
+			CD3DX12_RESOURCE_BARRIER::Transition(RenderTargets[FrameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			CD3DX12_RESOURCE_BARRIER::Transition(DepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE)
+		};
+		CommandList->ResourceBarrier(_countof(Barriers), Barriers);
+	}
+	CommandList->RSSetViewports(1, &Viewport);
+	CommandList->RSSetScissorRects(1, &ScissorRect);
+
+	Prepass();
+	Basepass();
+
+
 
 	CommandLists[0].Close();
-
 	// Execute the command list.
 	ID3D12CommandList* ppCommandLists[] = { CommandList };
 	CommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);

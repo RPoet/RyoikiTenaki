@@ -61,12 +61,18 @@ void RRenderCommandListD3D12::CopyTexture(void* pData, ID3D12Resource* Dest, ID3
 	TextureData.pData = pData;
 	TextureData.RowPitch = TextureWidth * PixelSizeInBytes;
 	TextureData.SlicePitch = TextureData.RowPitch * Height;
-
+	
 	UpdateSubresources(CommandList, Dest, UploadHeap, 0, 0, 1, &TextureData);
 
 	auto Barrier = CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	// move this later
 	CommandList->ResourceBarrier(1, &Barrier);
+}
+
+void RRenderCommandListD3D12::SetGraphicsPipeline(RGraphicsPipeline& Pipeline)
+{
+	CommandList->SetGraphicsRootSignature(Pipeline.GetRootSignature().Get());
+	CommandList->SetPipelineState(Pipeline.GetPipelineStateObject().Get());
 }
 
 void RRenderCommandListD3D12::SetPrimitiveTopology(PrimitiveType Type)
