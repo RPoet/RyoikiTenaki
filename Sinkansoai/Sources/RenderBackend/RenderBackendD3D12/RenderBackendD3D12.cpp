@@ -14,6 +14,50 @@ RMesh RenderMesh;
 SharedPtr<RTexture2DD3D12> DefaultTexture;
 
 
+static String GetLatestWinPixGpuCapturerPath()
+{
+	LPWSTR programFilesPath = nullptr;
+	SHGetKnownFolderPath(FOLDERID_ProgramFiles, KF_FLAG_DEFAULT, NULL, &programFilesPath);
+
+	String pixSearchPath = programFilesPath + std::wstring(L"\\Microsoft PIX\\*");
+
+	WIN32_FIND_DATA findData;
+	bool foundPixInstallation = false;
+	wchar_t newestVersionFound[MAX_PATH];
+
+	HANDLE hFind = FindFirstFile(pixSearchPath.c_str(), &findData);
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			if (((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY) &&
+				(findData.cFileName[0] != '.'))
+			{
+				if (!foundPixInstallation || wcscmp(newestVersionFound, findData.cFileName) <= 0)
+				{
+					foundPixInstallation = true;
+					StringCchCopy(newestVersionFound, _countof(newestVersionFound), findData.cFileName);
+				}
+			}
+		} while (FindNextFile(hFind, &findData) != 0);
+	}
+
+	FindClose(hFind);
+
+	if (!foundPixInstallation)
+	{
+		// TODO: Error, no PIX installation found
+	}
+
+	wchar_t output[MAX_PATH];
+	StringCchCopy(output, pixSearchPath.length(), pixSearchPath.data());
+	StringCchCat(output, MAX_PATH, &newestVersionFound[0]);
+	StringCchCat(output, MAX_PATH, L"\\WinPixGpuCapturer.dll");
+
+	return &output[0];
+}
+
+
 
 RRenderBackendD3D12::RRenderBackendD3D12()
 	: DynamicBuffer(*this, TEXT("Global Buffer"))
@@ -23,6 +67,16 @@ RRenderBackendD3D12::RRenderBackendD3D12()
 
 void RRenderBackendD3D12::Init()
 {
+
+#if USE_PIX
+	// Check to see if a copy of WinPixGpuCapturer.dll has already been injected into the application.
+	// This may happen if the application is launched through the PIX UI. 
+	if (GetModuleHandle(L"WinPixGpuCapturer.dll") == 0)
+	{
+		LoadLibrary(GetLatestWinPixGpuCapturerPath().c_str());
+	}
+#endif
+
 	UINT DxgiFactoryFlags = 0;
 #if defined(_DEBUG)
 	TRefCountPtr<ID3D12Debug> DebugController;
@@ -462,6 +516,7 @@ void RRenderBackendD3D12::Prepass()
 {
 	auto& D3D12CommandList = CommandLists[0];
 	auto& CommandList = CommandLists[0].CommandList;
+	PIXScopedEvent(CommandLists[0].CommandList, 0xFF, TEXT("Prepass"));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
 	CommandList->ClearDepthStencilView(DSVHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 0, 0, 0, nullptr);
@@ -500,6 +555,7 @@ void RRenderBackendD3D12::Basepass()
 {
 	auto& D3D12CommandList = CommandLists[0];
 	auto& CommandList = CommandLists[0].CommandList;
+	PIXScopedEvent(CommandLists[0].CommandList, 0xFFFF, TEXT("Basepass"));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE RTVHandle(RTVHeap->GetCPUDescriptorHandleForHeapStart(), FrameIndex, RTVDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
@@ -551,20 +607,22 @@ void RRenderBackendD3D12::FunctionalityTestRender()
 	auto& D3D12CommandList = CommandLists[0];
 	auto& CommandList = CommandLists[0].CommandList;
 	{
-		CD3DX12_RESOURCE_BARRIER Barriers[] =
+		PIXScopedEvent(CommandLists[0].CommandList, 0xFFFFFFFF, TEXT("FunctionalityTestRender"));
+
 		{
-			CD3DX12_RESOURCE_BARRIER::Transition(RenderTargets[FrameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET),
-			CD3DX12_RESOURCE_BARRIER::Transition(DepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE)
-		};
-		CommandList->ResourceBarrier(_countof(Barriers), Barriers);
+			CD3DX12_RESOURCE_BARRIER Barriers[] =
+			{
+				CD3DX12_RESOURCE_BARRIER::Transition(RenderTargets[FrameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET),
+				CD3DX12_RESOURCE_BARRIER::Transition(DepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE)
+			};
+			CommandList->ResourceBarrier(_countof(Barriers), Barriers);
+		}
+		CommandList->RSSetViewports(1, &Viewport);
+		CommandList->RSSetScissorRects(1, &ScissorRect);
+
+		Prepass();
+		Basepass();
 	}
-	CommandList->RSSetViewports(1, &Viewport);
-	CommandList->RSSetScissorRects(1, &ScissorRect);
-
-	Prepass();
-	Basepass();
-
-
 
 	CommandLists[0].Close();
 	// Execute the command list.
