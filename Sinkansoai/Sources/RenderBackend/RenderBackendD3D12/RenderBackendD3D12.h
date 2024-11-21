@@ -20,9 +20,10 @@ constexpr static int32 NumBackBuffers = 2;
 
 enum EGraphicsPipeline
 {
-	Prepass = 0,
-	Basepass = 1,
-	NumPasses = Basepass + 1
+	Prepass,
+	Basepass,
+	DeferredLighting ,
+	NumPasses = DeferredLighting + 1
 };
 
 enum EDescriptorHeapAddressSpace
@@ -31,6 +32,14 @@ enum EDescriptorHeapAddressSpace
 	ShaderResourceView  = 1,
 	UnorderedAccessView = 2,
 	Num = UnorderedAccessView + 1
+};
+
+struct RSceneTextures
+{
+	SharedPtr< RRenderTargetD3D12 > SceneDepth;
+	SharedPtr< RRenderTargetD3D12 > SceneColor;
+	SharedPtr< RRenderTargetD3D12 > BaseColor;
+	SharedPtr< RRenderTargetD3D12 > WorldNormal;
 };
 
 class RGraphicsPipeline
@@ -88,7 +97,6 @@ private:
 	CD3DX12_RECT ScissorRect;
 	TRefCountPtr<IDXGISwapChain3> SwapChain;
 	TRefCountPtr<ID3D12Resource> RenderTargets[NumBackBuffers];
-	TRefCountPtr<ID3D12Resource> DepthStencilBuffer;
 
 
 	RDynamicBufferD3D12 DynamicBuffer;
@@ -97,6 +105,8 @@ private:
 
 
 	// Make Heap manager. Scene ConstatnBuffers
+
+	TRefCountPtr<ID3D12DescriptorHeap> SceneTextureRTVHeap;
 
 	TRefCountPtr<ID3D12DescriptorHeap> RTVHeap;
 	TRefCountPtr<ID3D12DescriptorHeap> DSVHeap;
@@ -118,6 +128,9 @@ public:
 
 	void Prepass();
 	void Basepass();
+
+	void AfterBasepass();
+
 	virtual void FunctionalityTestRender() override;
 
 	ID3D12Device* GetDevice()

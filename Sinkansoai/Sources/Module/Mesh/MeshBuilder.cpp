@@ -128,6 +128,7 @@ MMesh MMeshBuilder::LoadMesh(const String& Path, const String& ModelName)
 				attributes.texcoords[i.texcoord_index * 2 + 1],
 			};
 
+
 			Vertex vertex = { position, normal, texCoord };
 
 			if (UniqueVertices.count(vertex) == 0) {
@@ -135,6 +136,7 @@ MMesh MMeshBuilder::LoadMesh(const String& Path, const String& ModelName)
 
 				Out.RenderData.Positions.push_back(vertex.position);
 				Out.RenderData.UV0.push_back(vertex.texCoord);
+				Out.RenderData.Normals.push_back(vertex.normal);
 			}
 
 
@@ -171,9 +173,22 @@ MMesh MMeshBuilder::LoadMesh(const String& Path, const String& ModelName)
 				Out.Materials[Index].bValid = true;
 
 				auto&& DiffuseTexture = MTextureBuilder::Get().LoadTexture(TexturePathBase, String(Material.diffuse_texname.begin(), Material.diffuse_texname.end()));
-
 				Out.Materials[Index].Textures.push_back(DiffuseTexture);
 				Out.Materials[Index].Colors.emplace_back(Material.diffuse[0], Material.diffuse[1], Material.diffuse[2]);
+
+				Out.Materials[Index].bBaseColor = true;
+			}
+
+			if (Material.displacement_texname.length() > 0)
+			{
+				Out.Materials[Index].bValid = true;
+
+				auto&& Normal = MTextureBuilder::Get().LoadTexture(TexturePathBase, String(Material.displacement_texname.begin(), Material.displacement_texname.end()));
+				Out.Materials[Index].Textures.push_back(Normal);
+				Out.Materials[Index].Colors.emplace_back(1,1,1);
+
+
+				Out.Materials[Index].bNormal = true;
 			}
 		}
 	}

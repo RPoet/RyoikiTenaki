@@ -200,6 +200,32 @@ vector<uint8> MTextureBuilder::GenerateDefaultTexture(const uint32 Width, const 
     return data;
 }
 
+vector<uint8> MTextureBuilder::GenerateDefaultColoredTexture(const uint32 Width, const uint32 Height, const uint32 PixelSizeInBytes, uint32 Color)
+{
+    const uint32 rowPitch = Width * PixelSizeInBytes;
+    const uint32 cellPitch = rowPitch >> 3;        // The width of a cell in the checkboard texture.
+    const uint32 cellHeight = Width >> 3;    // The height of a cell in the checkerboard texture.
+    const uint32 textureSize = rowPitch * Height;
+
+    vector<uint8> data(textureSize);
+    uint8* pData = &data[0];
+
+    for (uint32 n = 0; n < textureSize; n += PixelSizeInBytes)
+    {
+        uint32 x = n % rowPitch;
+        uint32 y = n / rowPitch;
+        uint32 i = x / cellPitch;
+        uint32 j = y / cellHeight;
+
+        pData[n] = Color & 0xFF;        // R
+        pData[n + 1] = Color & 0xFF00;    // G
+        pData[n + 2] = Color & 0xFF0000;    // B
+        pData[n + 3] = Color & 0xFF000000;    // A
+    }
+
+    return data;
+}
+
 void MTextureBuilder::Init()
 {
 	Super::Init();
@@ -222,6 +248,7 @@ MTexture MTextureBuilder::LoadTexture(const String& Path, const String& TextureN
     Tga TGATexture(std::string(CombinedPath.begin(), CombinedPath.end()).c_str());
 
 	MTexture Texture;
+    Texture.Name = TextureName;
     Texture.Pixels = TGATexture.GetPixels();
     Texture.Width = TGATexture.GetWidth();
     Texture.Height = TGATexture.GetHeight();

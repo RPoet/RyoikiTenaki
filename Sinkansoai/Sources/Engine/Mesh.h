@@ -9,6 +9,9 @@
 struct MMaterial
 {
 public:
+	uint32 bBaseColor : 1;
+	uint32 bNormal : 1;
+
 	vector< MTexture > Textures;
 	bool bValid = false;
 
@@ -74,6 +77,8 @@ public:
 		PositionVertexBuffer->AllocateResource();
 		UVVertexBuffer->SetRawVertexBuffer(Mesh.RenderData.UV0);
 		UVVertexBuffer->AllocateResource();
+		NormalVertexBuffer->SetRawVertexBuffer(Mesh.RenderData.Normals);
+		NormalVertexBuffer->AllocateResource();
 		IndexBuffer->SetIndexBuffer(Mesh.RenderData.Indices);
 		IndexBuffer->AllocateResource();
 
@@ -135,7 +140,7 @@ public:
 		uint32 NumTextures = 0;
 		for (const auto& Material : Materials)
 		{
-			NumTextures += max(Material.Textures.size(), 1);
+			NumTextures += max(Material.Textures.size(), 2);
 		}
 
 		return NumTextures;

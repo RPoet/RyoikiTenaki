@@ -17,6 +17,8 @@ public:
 
 	vector<uint8> GenerateDefaultTexture(const uint32 Width, const uint32 Height, const uint32 PixelSizeInBytes);
 
+	vector<uint8> GenerateDefaultColoredTexture(const uint32 Width, const uint32 Height, const uint32 PixelSizeInBytes, uint32 Color);
+
 	MTexture LoadTexture(const String& Path, const String& TextureName);
 
 };

@@ -10,8 +10,7 @@ cbuffer View : register(b0, space0)
 
     float DeltaTime;
     float WorldTime;
-    float Offset;
-    float Pad;
+    uint2 ViewRect;
 };
 
 float3 GetDebugColor(uint ColorId)

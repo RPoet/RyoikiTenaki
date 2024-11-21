@@ -320,3 +320,13 @@ void RTexture2DD3D12::StreamTexture(void* pData)
 }
 
 
+void RRenderTargetD3D12::AllocateResource()
+{
+	UnderlyingResource = Backend.CreateRenderTargetResource(Name.c_str(), Flag, Format, Width, Height);
+
+	SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; // Check
+	SRVDesc.Format = Format;
+	SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	SRVDesc.Texture2D.MipLevels = NumMips;
+}
+

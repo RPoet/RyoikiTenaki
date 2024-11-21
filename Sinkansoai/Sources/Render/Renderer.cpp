@@ -20,13 +20,7 @@ void RRenderer::ResolveViewMatrices()
 	ViewMatrices[0].DeltaTime = Scene.GetDeltaTime();
 	ViewMatrices[0].WorldTime = Scene.GetWorldTime();
 
-	static float Offset = 0;
-	Offset += Scene.GetDeltaTime();
-	if (Offset > 1.25)
-	{
-		Offset = -1.25;
-	}
-	ViewMatrices[0].Offset = Offset;
+	ViewMatrices[0].ViewRect = ViewContexts[0].ViewRect;
 
 	//cout << Scene.GetWorldTime() << endl;
 }

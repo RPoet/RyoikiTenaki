@@ -21,5 +21,6 @@ public:
 
 	float DeltaTime;
 	float WorldTime;
-	float Offset;
+	
+	uint2 ViewRect;
 };
