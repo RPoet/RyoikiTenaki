@@ -37,7 +37,12 @@ PSInput VSMain(float3 Position : POSITION
     return Result;
 }
 
-float4 PSMain(PSInput In) : SV_TARGET
+void PSMain(PSInput In
+, out float4 Color0  : SV_TARGET0
+, out float4 Color1  : SV_TARGET1 // base
+, out float4 Color2  : SV_TARGET2 // world normal
+, out float4 Color3  : SV_TARGET3 // material
+)
 { 
     const float DepthFade = In.Position.z * 100; 
     const uint Index = MaterialIndex;
@@ -75,9 +80,8 @@ float4 PSMain(PSInput In) : SV_TARGET
 
     float3 WorldNormal = normalize( mul (  TBN, NormalColor.xyz  ) );
 
-#if 0
-    return float4(In.UV, 0, 1);
-#else
-    return float4(NormalColor.xyz, 1);
- #endif
+    Color0 = float4(0,0,0, 1);
+    Color1 = float4(DiffuseColor.xyz, 1);
+    Color2 = float4(NormalColor.xyz, 1);
+    Color3 = float4(1, 1, 1, 1);
 }

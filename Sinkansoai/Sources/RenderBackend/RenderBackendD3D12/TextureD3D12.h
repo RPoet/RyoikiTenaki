@@ -55,6 +55,11 @@ public:
 		return SRVDesc;
 	}
 
+
+	virtual void SetSRVFormat(DXGI_FORMAT Format)
+	{
+		SRVDesc.Format = Format;
+	}
 	friend class RRenderBackendD3D12;
 };
 

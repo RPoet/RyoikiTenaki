@@ -42,8 +42,8 @@ ID3DBlob* MShaderCompiler::CompileShader(String&& FileName, String&& Entry, ESha
 		break;
 	}
 
-	ID3DBlob* Shader;
-	ID3DBlob* Error;
+	ID3DBlob* Shader{};
+	ID3DBlob* Error{};
 	D3DCompileFromFile(FileName.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, CharString(Entry.begin(), Entry.end()).c_str(), Target, CompileFlags, 0, &Shader, &Error);
 
 	if (Error)

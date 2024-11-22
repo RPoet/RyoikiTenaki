@@ -31,6 +31,7 @@ enum EDescriptorHeapAddressSpace
 	ConstantBufferView  = 0,
 	ShaderResourceView  = 1,
 	UnorderedAccessView = 2,
+
 	Num = UnorderedAccessView + 1
 };
 
@@ -40,6 +41,10 @@ struct RSceneTextures
 	SharedPtr< RRenderTargetD3D12 > SceneColor;
 	SharedPtr< RRenderTargetD3D12 > BaseColor;
 	SharedPtr< RRenderTargetD3D12 > WorldNormal;
+	SharedPtr< RRenderTargetD3D12 > Material;
+
+
+	D3D12_GPU_DESCRIPTOR_HANDLE GPUAddressHandle{};
 };
 
 class RGraphicsPipeline
