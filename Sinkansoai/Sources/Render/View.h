@@ -23,4 +23,7 @@ public:
 	float WorldTime;
 	
 	uint2 ViewRect;
+
+
+	uint32 DebugValue;
 };

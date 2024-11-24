@@ -11,6 +11,8 @@ cbuffer View : register(b0, space0)
     float DeltaTime;
     float WorldTime;
     uint2 ViewRect;
+
+	uint DebugInput;
 };
 
 float3 GetDebugColor(uint ColorId)

@@ -26,7 +26,7 @@ public:
 	vector< float2 > UV0;
 	vector< float3 > Normals;
 	vector< float3 > Tangents;
-
+	vector< float3 > Bitangents;
 	vector< uint32 > Indices;
 };
 
@@ -61,6 +61,7 @@ public:
 	RVertexBuffer* UVVertexBuffer;
 	RVertexBuffer* NormalVertexBuffer;
 	RVertexBuffer* TangentVertexBuffer;
+	RVertexBuffer* BitangentVertexBuffer;
 	RIndexBuffer* IndexBuffer;
 
 	vector< MSectionData > Sections;
@@ -70,15 +71,24 @@ public:
 	template<class LambdaType>
 	void InitResources(const MMesh& Mesh, LambdaType&& PlatformFunc)
 	{
-		PlatformFunc(PositionVertexBuffer, UVVertexBuffer, NormalVertexBuffer, TangentVertexBuffer, IndexBuffer);
+		PlatformFunc(PositionVertexBuffer, UVVertexBuffer, NormalVertexBuffer, TangentVertexBuffer, BitangentVertexBuffer, IndexBuffer);
 
 		assert((PositionVertexBuffer || UVVertexBuffer || NormalVertexBuffer || TangentVertexBuffer) && "Vertex buffers not initialized");
 		PositionVertexBuffer->SetRawVertexBuffer(Mesh.RenderData.Positions);
 		PositionVertexBuffer->AllocateResource();
+
 		UVVertexBuffer->SetRawVertexBuffer(Mesh.RenderData.UV0);
 		UVVertexBuffer->AllocateResource();
+
 		NormalVertexBuffer->SetRawVertexBuffer(Mesh.RenderData.Normals);
 		NormalVertexBuffer->AllocateResource();
+
+		TangentVertexBuffer->SetRawVertexBuffer(Mesh.RenderData.Tangents);
+		TangentVertexBuffer->AllocateResource();
+
+		BitangentVertexBuffer->SetRawVertexBuffer(Mesh.RenderData.Bitangents);
+		BitangentVertexBuffer->AllocateResource();
+
 		IndexBuffer->SetIndexBuffer(Mesh.RenderData.Indices);
 		IndexBuffer->AllocateResource();
 
@@ -132,6 +142,7 @@ public:
 		Delete(UVVertexBuffer);
 		Delete(NormalVertexBuffer);
 		Delete(TangentVertexBuffer);
+		Delete(BitangentVertexBuffer);
 		Delete(IndexBuffer);
 	}
 

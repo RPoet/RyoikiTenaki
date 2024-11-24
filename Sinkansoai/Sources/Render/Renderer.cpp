@@ -1,10 +1,12 @@
 #include "Renderer.h"
 #include "../RenderBackend/RenderBackendCommon.h"
-
+#include "../Input.h"
 RRenderer::RRenderer(RScene& Scene)
 	: Scene(Scene)
 {
 }
+
+uint32 DebugInput = 0;
 
 void RRenderer::ResolveViewMatrices()
 {
@@ -22,6 +24,24 @@ void RRenderer::ResolveViewMatrices()
 
 	ViewMatrices[0].ViewRect = ViewContexts[0].ViewRect;
 
+
+
+	if (MInput::Get().IsPressed('0'))
+	{
+		DebugInput = 0;
+	}
+
+	if (MInput::Get().IsPressed('1'))
+	{
+		DebugInput = 1;
+	}
+
+	if (MInput::Get().IsPressed('2'))
+	{
+		DebugInput = 2;
+	}
+
+	ViewMatrices[0].DebugValue = DebugInput;
 	//cout << Scene.GetWorldTime() << endl;
 }
 

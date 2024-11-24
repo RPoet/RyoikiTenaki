@@ -23,7 +23,6 @@ PSInput VSMain(uint VertexId : SV_VertexID)
     return Result;
 }
 
-
 Texture2D<float>  SceneDepthTexture  : register(t0);
 Texture2D<float4> SceneColor         : register(t1);
 Texture2D<float4> BaseColorTexture   : register(t2);
@@ -36,12 +35,28 @@ float4 PSMain(PSInput In) : SV_TARGET
     float2 BufferUV = (In.Position.xy + 0.5f)* rcp(ViewRect);
 
     uint2 PixelPosition = SVPosition.xy;
-    float Depth = SceneDepthTexture[PixelPosition];
 
+    float Depth = SceneDepthTexture[PixelPosition];
     float4 BaseColor = BaseColorTexture[PixelPosition];
+    float4 WorldNormal = WorldNormalTexture[PixelPosition];
+
+#if 1
+    if( DebugInput == 0 )
+    {
+        return float4( BaseColor );
+    }
     
-#if 0
-    return float4( Depth * 100, 0, 0, 1 );
+    if( DebugInput == 1 )
+    {
+        return float4( Depth, Depth, Depth, 1 ) * 20.0f;
+    }
+    
+    if( DebugInput == 2 )
+    {
+        return float4( WorldNormal );
+    }
+
+    return float4(0,0,0,1);
 #else 
     return float4( BaseColor );
 #endif

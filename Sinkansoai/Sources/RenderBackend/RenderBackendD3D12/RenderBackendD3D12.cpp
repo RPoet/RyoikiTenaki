@@ -204,12 +204,13 @@ void RRenderBackendD3D12::Init()
 			MMesh Mesh = MMeshBuilder::Get().LoadMesh(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Resources/sponza/"), TEXT("sponza.obj"));
 
 			RenderMesh.InitResources(Mesh,
-				[&](RVertexBuffer*& PositionVB, RVertexBuffer*& UVVB, RVertexBuffer*& NormalVB, RVertexBuffer*& TangetVB, RIndexBuffer*& IB)
+				[&](RVertexBuffer*& PositionVB, RVertexBuffer*& UVVB, RVertexBuffer*& NormalVB, RVertexBuffer*& TangetVB, RVertexBuffer*& BitangetVB, RIndexBuffer*& IB)
 				{
 					PositionVB = new RVertexBufferD3D12(*this, TEXT("PositionVertexBuffer"));
 					UVVB = new RVertexBufferD3D12(*this, TEXT("UVVertexBuffer"));
 					NormalVB = new RVertexBufferD3D12(*this, TEXT("NormalVertexBuffer"));
 					TangetVB = new RVertexBufferD3D12(*this, TEXT("TangentVertexBuffer"));
+					BitangetVB = new RVertexBufferD3D12(*this, TEXT("BitangentVertexBuffer"));
 					IB = new RIndexBufferD3D12(*this, TEXT("IndexBuffer"));
 				});
 
@@ -556,7 +557,7 @@ void RRenderBackendD3D12::Init()
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {};
 			PSODesc.InputLayout = { InputElementDescs, _countof(InputElementDescs) };
 			PSODesc.pRootSignature = GraphicsPipelines[EGraphicsPipeline::Prepass].GetRootSignature().Get();
-			PSODesc.VS = CD3DX12_SHADER_BYTECODE(VertexShader.Get());
+			PSODesc.VS = CD3DX12_SHADER_BYTECODE{ VertexShader.Get() };
 			PSODesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 			PSODesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSODesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -581,15 +582,17 @@ void RRenderBackendD3D12::Init()
 			{
 				{ "POSITION",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 				{ "TEXCOORD",		0, DXGI_FORMAT_R32G32_FLOAT,		1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-				{ "NORMAL",			0, DXGI_FORMAT_R32G32B32_FLOAT,		2, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+				{ "NORMAL",			0, DXGI_FORMAT_R32G32B32_FLOAT,		2, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TANGENT",		0, DXGI_FORMAT_R32G32B32_FLOAT,		3, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "BITANGENT",		0, DXGI_FORMAT_R32G32B32_FLOAT,		4, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 			};
 
 			// Describe and create the graphics pipeline state object (PSO).
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {};
 			PSODesc.InputLayout = { InputElementDescs, _countof(InputElementDescs) };
 			PSODesc.pRootSignature = GraphicsPipelines[EGraphicsPipeline::Prepass].GetRootSignature().Get();
-			PSODesc.VS = CD3DX12_SHADER_BYTECODE(VertexShader.Get());
-			PSODesc.PS = CD3DX12_SHADER_BYTECODE(PixelShader.Get());
+			PSODesc.VS = CD3DX12_SHADER_BYTECODE{ VertexShader.Get() };
+			PSODesc.PS = CD3DX12_SHADER_BYTECODE{ PixelShader.Get() };
 			PSODesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 			PSODesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSODesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -623,8 +626,8 @@ void RRenderBackendD3D12::Init()
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {};
 			PSODesc.InputLayout = { nullptr, 0 };
 			PSODesc.pRootSignature = GraphicsPipelines[EGraphicsPipeline::DeferredLighting].GetRootSignature().Get();
-			PSODesc.VS = CD3DX12_SHADER_BYTECODE(VertexShader.Get());
-			PSODesc.PS = CD3DX12_SHADER_BYTECODE(PixelShader.Get());
+			PSODesc.VS = CD3DX12_SHADER_BYTECODE{ VertexShader.Get() };
+			PSODesc.PS = CD3DX12_SHADER_BYTECODE{ PixelShader.Get() };
 			PSODesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 			PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 			PSODesc.RasterizerState.DepthClipEnable = false;
@@ -765,6 +768,8 @@ void RRenderBackendD3D12::Basepass()
 	D3D12CommandList.SetVertexBuffer(0, Mesh.PositionVertexBuffer);
 	D3D12CommandList.SetVertexBuffer(1, Mesh.UVVertexBuffer);
 	D3D12CommandList.SetVertexBuffer(2, Mesh.NormalVertexBuffer);
+	D3D12CommandList.SetVertexBuffer(3, Mesh.TangentVertexBuffer);
+	D3D12CommandList.SetVertexBuffer(4, Mesh.BitangentVertexBuffer);
 
 	D3D12CommandList.SetIndexBuffer(Mesh.IndexBuffer);
 

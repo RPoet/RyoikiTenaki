@@ -3,16 +3,16 @@
 #include "../Singleton.h"
 
 
-class IComponent
+class IComponentECS
 {
 public:
-	virtual ~IComponent() = default;
+	virtual ~IComponentECS() = default;
 	virtual void Destroy(const MEntityData& entity) = 0;
 	virtual void Tick(float DeltaTime) {};
 };
 
 template< class T >
-class MComponent : public IComponent
+class MComponentECS : public IComponentECS
 {
 private:
 	unordered_map<uint32, uint32> EntityIdToComponentIndex;
@@ -21,10 +21,8 @@ private:
 	vector<T> Datum;
 
 public:
-	MComponent() = default;
-	~MComponent() = default;
-
-
+	MComponentECS() = default;
+	~MComponentECS() = default;
 
 	void Destroy(const MEntityData& entity) override
 	{

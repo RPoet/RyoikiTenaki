@@ -20,19 +20,27 @@ struct PSInput
     float2 UV : TEXCOORD;
     float3 WorldPosition : POSITION;
     float3 Normal : NORMAL;
+    float3 Tangent : TANGENT;
+    float3 Bitangent : BITANGENT;
     float4 Color : COLOR;
 };
 
 
 PSInput VSMain(float3 Position : POSITION
              , float2 UV : TEXCOORD
-             , float3 Normal : NORMAL)
+             , float3 Normal : NORMAL
+             , float3 Tangent : TANGENT
+             , float3 Bitangent : BITANGENT      
+             )
 {
     PSInput Result;
     Result.Position = mul( WorldToClip, float4(Position.xyz, 1) );
     Result.UV = UV;
     Result.WorldPosition = Position.xyz;
     Result.Normal = Normal.xyz;
+    Result.Tangent = Tangent.xyz;
+    Result.Bitangent = Bitangent.xyz;
+
     Result.Color = float4(UV, 0, 1);
     return Result;
 }
@@ -47,41 +55,21 @@ void PSMain(PSInput In
     const float DepthFade = In.Position.z * 100; 
     const uint Index = MaterialIndex;
     const float3 Color = GetDebugColor(Index % 13);
-
     
     const uint TexutreBase = MaterialIndex * 2;
     const float4 DiffuseColor = MaterialTextures[TexutreBase + 0].Sample(Sampler, In.UV) * float4(1, 1, 1, 1);
-    const float4 NormalColor = MaterialTextures[TexutreBase + 1].Sample(Sampler, In.UV) * float4(1, 1, 1, 1);
-
-
-    const float3 WorldDDX = ddx(In.WorldPosition);
-    const float3 WorldDDY = ddy(In.WorldPosition);
+    const float3 LocalNormal = MaterialTextures[TexutreBase + 1].Sample(Sampler, In.UV).xyz * 2 - 1;
     
-    const float2 TexDDX = ddx(In.UV); 
-    const float2 TexDDY = ddx(In.UV);
+    const float3x3 TangentToWorld = float3x3(
+        In.Tangent,
+        In.Bitangent,
+        In.Normal
+    );
 
-    const float3 VertexNormal = normalize(In.Normal);
+    float3 WorldNormal = normalize( mul ( TangentToWorld, LocalNormal ) ) * 0.5f + 0.5f;
 
-    float3 Tangent = TexDDY.y * WorldDDX - TexDDX.y * WorldDDY;
-    float3 Binormal = TexDDX.x * WorldDDY - TexDDY.x * WorldDDX;
-    float3 x = cross( VertexNormal, Tangent );
-    Tangent = normalize( cross( x, VertexNormal ) );
-
-    x = cross( Binormal, VertexNormal );
-    Binormal = normalize( cross( VertexNormal, x ) ) ;
-
-    //float3 VertexNormal = NormalColor.xyz;
-
-    const float3x3 TBN = transpose( float3x3(
-        Tangent,
-        Binormal,
-        VertexNormal
-    ) );
-
-    float3 WorldNormal = normalize( mul (  TBN, NormalColor.xyz  ) );
-
-    Color0 = float4(0,0,0, 1);
+    Color0 = float4(0, 0, 0, 1);
     Color1 = float4(DiffuseColor.xyz, 1);
-    Color2 = float4(NormalColor.xyz, 1);
+    Color2 = float4(WorldNormal.xyz, 1);
     Color3 = float4(1, 1, 1, 1);
 }
