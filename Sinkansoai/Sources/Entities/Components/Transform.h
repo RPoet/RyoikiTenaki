@@ -46,16 +46,35 @@ public:
 		bIsDirty = true;
 	}
 
+	float3 TransformPoint(float3 V)
+	{
+		auto Point = DirectX::XMVector3Transform(DirectX::XMVectorSet(V.x, V.y, V.z, 1), ToMatrix());
+		float3 Out{};
+		DirectX::XMStoreFloat3(&Out, Point);
+		return Out;
+	}
+
+	float3 TransformVector(float3 V)
+	{
+		auto Vec = DirectX::XMVector3Transform(DirectX::XMVectorSet(V.x, V.y, V.z, 0), ToMatrix());
+		float3 Out{};
+		DirectX::XMStoreFloat3(&Out, Vec);
+		return Out;
+	}
+
+	float3 GetDirection()
+	{
+		return TransformVector({ 0, 0, 1 });
+	}
+
 	XMMATRIX& ToMatrix()
 	{
-		if (bIsDirty)
-		{
-			auto RotationM = DirectX::XMMatrixRotationRollPitchYaw(Rotation.x, Rotation.y, Rotation.z);
-			auto ScaleM = DirectX::XMMatrixScaling(Scale.x, Scale.y, Scale.z);
-			auto TranslationM = DirectX::XMMatrixTranslation(Position.x, Position.y, Position.z);
+		// fix dirty flag and make all those member variables as private to use dirty flag.
+		auto RotationM = DirectX::XMMatrixRotationRollPitchYaw(DirectX::XMConvertToRadians( Rotation.x ), DirectX::XMConvertToRadians(Rotation.y), DirectX::XMConvertToRadians(Rotation.z));
+		auto ScaleM = DirectX::XMMatrixScaling(Scale.x, Scale.y, Scale.z);
+		auto TranslationM = DirectX::XMMatrixTranslation(Position.x, Position.y, Position.z);
 
-			LocalToWorld = TranslationM * RotationM * ScaleM;
-		}
+		LocalToWorld = TranslationM * ScaleM * RotationM ;
 
 		return LocalToWorld;
 	}

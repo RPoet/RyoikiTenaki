@@ -1,12 +1,21 @@
 #include "Renderer.h"
 #include "../RenderBackend/RenderBackendCommon.h"
 #include "../Input.h"
+
+#include "../Entities/Components/Transform.h"
+
+
+MTransform DirectionalLight{};
+
+
 RRenderer::RRenderer(RScene& Scene)
 	: Scene(Scene)
 {
+	DirectionalLight.Rotation.x = 55.0f;
 }
 
 uint32 DebugInput = 0;
+
 
 void RRenderer::ResolveViewMatrices()
 {
@@ -17,15 +26,13 @@ void RRenderer::ResolveViewMatrices()
 	float AspectRatio = (float)ViewContexts[0].ViewRect.x / (float)ViewContexts[0].ViewRect.y;
 
 	ViewMatrices[0].ProjMatrix = DirectX::XMMatrixPerspectiveFovLH(ViewContexts[0].Fov * 3.141592 / 180.0f, AspectRatio, 50000.0f, ViewContexts[0].MinZ);
+	ViewMatrices[0].InvProjMatrix = DirectX::XMMatrixInverse(nullptr, ViewMatrices[0].ProjMatrix);
 	ViewMatrices[0].WorldToClip = ViewMatrices[0].WorldToViewMatrix * ViewMatrices[0].ProjMatrix;
-
 	ViewMatrices[0].DeltaTime = Scene.GetDeltaTime();
 	ViewMatrices[0].WorldTime = Scene.GetWorldTime();
-
 	ViewMatrices[0].ViewRect = ViewContexts[0].ViewRect;
-
-
-
+	ViewMatrices[0].ViewTranslation = ViewContexts[0].ViewTranslation;
+	
 	if (MInput::Get().IsPressed('0'))
 	{
 		DebugInput = 0;
@@ -42,20 +49,29 @@ void RRenderer::ResolveViewMatrices()
 	}
 
 	ViewMatrices[0].DebugValue = DebugInput;
-	//cout << Scene.GetWorldTime() << endl;
+
+	DirectionalLight.Rotation.y += Scene.GetDeltaTime() * 45;
+
+	auto Direction = DirectionalLight.GetDirection();
+	LightData.DirectionalLight.Direction = float4(Direction.x, Direction.y, Direction.z, 1);
+	LightData.DirectionalLight.Diffuse = float4(1, 1, 1, 1);
+	LightData.DirectionalLight.Specular = float4(1, 1, 1, 1);
+	LightData.DirectionalLight.Ambient = float4(0.2, 0.2, 0.2, 1);
 }
 
 void RRenderer::RenderDeferredShading(RRenderCommandList& CommandList)
 {
+	GBackend->RenderBegin();
 	ResolveViewMatrices();
 
-	auto GlobalDynamicBuffer = GBackend->GetGlobalDynamicBuffer();
-	GlobalDynamicBuffer->CopyData(ViewMatrices[0]);
+	auto GlobalDynamicBuffer0 = GBackend->GetGlobalDynamicBuffer(0); // 0 used for view
+	auto GlobalDynamicBuffer1 = GBackend->GetGlobalDynamicBuffer(1); // 1 used for light data
+
+	GlobalDynamicBuffer0->CopyData(ViewMatrices[0]);
+	GlobalDynamicBuffer1->CopyData(LightData);
 
 	GBackend->FunctionalityTestRender();
-
-	//	cout << "Render Deferred Shading" << endl;
-
+	GBackend->RenderFinish();
 }
 
 void RRenderer::RenderForwardShading(RRenderCommandList& CommandList)

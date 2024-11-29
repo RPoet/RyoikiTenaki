@@ -22,7 +22,8 @@ enum EGraphicsPipeline
 {
 	Prepass,
 	Basepass,
-	DeferredLighting ,
+	DeferredLighting,
+	Postprocess,
 	NumPasses = DeferredLighting + 1
 };
 
@@ -42,9 +43,12 @@ struct RSceneTextures
 	SharedPtr< RRenderTargetD3D12 > BaseColor;
 	SharedPtr< RRenderTargetD3D12 > WorldNormal;
 	SharedPtr< RRenderTargetD3D12 > Material;
-
+	SharedPtr< RRenderTargetD3D12 > DebugTexture;
 
 	D3D12_GPU_DESCRIPTOR_HANDLE GPUAddressHandle{};
+
+
+	void InitSceneTextures(RRenderBackendD3D12& Backend);
 };
 
 class RGraphicsPipeline
@@ -80,18 +84,33 @@ public:
 };
 
 
+// TO DO implement Descriptor heap cache
+//class RDescriptorHeap
+//{
+//private:
+//	TRefCountPtr<ID3D12DescriptorHeap> UnderlyingHeap;
+//
+//public:
+//
+//
+//	ID3D12DescriptorHeap* GetUnderlyingHeap()
+//	{
+//		return UnderlyingHeap.Get();
+//	}
+//};
+
+using RDescriptorHeap = ID3D12DescriptorHeap;
+
 class RRenderBackendD3D12 : public RRenderBackend, public Singleton<RRenderBackendD3D12>
 {
 private:
+	uint32 bSupportsRootSignatureVersion1_1 : 1;
+
 	TRefCountPtr< ID3D12Device > Device;
 	vector<RRenderCommandListD3D12> CommandLists;
 	TRefCountPtr<ID3D12CommandQueue> CommandQueue;
 
 	vector< RGraphicsPipeline > GraphicsPipelines;
-
-	//TRefCountPtr<ID3D12RootSignature> RootSignature;
-	//TRefCountPtr<ID3D12PipelineState> PipelineStateObject;
-
 	// Synchronization objects.
 	uint32 FrameIndex;
 	HANDLE FenceEvent;
@@ -103,19 +122,19 @@ private:
 	TRefCountPtr<IDXGISwapChain3> SwapChain;
 	TRefCountPtr<ID3D12Resource> RenderTargets[NumBackBuffers];
 
-
-	RDynamicBufferD3D12 DynamicBuffer;
+	RDynamicBufferD3D12 DynamicBuffers[2];
 
 	vector< TRefCountPtr<ID3D12Resource> > UploadHeapReferences;
 
 
 	// Make Heap manager. Scene ConstatnBuffers
 
-	TRefCountPtr<ID3D12DescriptorHeap> SceneTextureRTVHeap;
+	TRefCountPtr<RDescriptorHeap> SceneTextureRTVHeap;
+	TRefCountPtr<RDescriptorHeap> ScreenPassRTVHeap;
 
-	TRefCountPtr<ID3D12DescriptorHeap> RTVHeap;
-	TRefCountPtr<ID3D12DescriptorHeap> DSVHeap;
-	TRefCountPtr<ID3D12DescriptorHeap> CBVSRVHeap;
+	TRefCountPtr<RDescriptorHeap> RTVHeap;
+	TRefCountPtr<RDescriptorHeap> DSVHeap;
+	TRefCountPtr<RDescriptorHeap> CBVSRVHeap;
 	D3D12_GPU_DESCRIPTOR_HANDLE AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::Num]{};
 	uint32 NumRegisteredHeaps[EDescriptorHeapAddressSpace::Num]{};
 
@@ -133,8 +152,8 @@ public:
 
 	void Prepass();
 	void Basepass();
-
-	void AfterBasepass();
+	void RenderLights(RRenderCommandListD3D12& CommandList);
+	void Postprocess();
 
 	virtual void FunctionalityTestRender() override;
 
@@ -148,25 +167,29 @@ public:
 		return CommandLists[0];
 	}
 
+	void Execute();
 	void WaitForPreviousFence();
 
-	void RenderFinish();
+	void RenderBegin() override final;
+	void RenderFinish() override final;
 
 
-	virtual RDynamicBuffer* GetGlobalDynamicBuffer() override
+	virtual RDynamicBuffer* GetGlobalDynamicBuffer(uint32 Index) override
 	{
-		return &DynamicBuffer;
+		assert(Index < 2 && " Increase Fixed size dyanmic buffer");
+		return &DynamicBuffers[Index];
 	}
+
 
 	TRefCountPtr<ID3D12Resource> CreateUnderlyingResource(EResourceType ResourceType, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height, uint32 NumMips, uint32 Depths);
 
-
 	TRefCountPtr<ID3D12Resource> CreateRenderTargetResource(String&& Name, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height);
 	TRefCountPtr<ID3D12Resource> CreateTexture2DResource(String&& Name, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height);
-
-
 	TRefCountPtr<ID3D12Resource> CreateUploadHeap(const uint32 UploadHeapSize);
 
+
+
+	void CreateRootSignature(const CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC& RootSignatureDesc, RGraphicsPipeline& Pipepline);
 
 	friend class RRenderCommandListD3D12;
 };

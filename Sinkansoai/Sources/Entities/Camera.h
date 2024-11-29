@@ -14,6 +14,8 @@ private:
 	uint32 Width = 1920;
 	uint32 Height = 1080;
 
+	float3 ViewTranslation = { 0,0,0 };
+
 public:
 	MCamera() = default;
 	virtual ~MCamera() = default;
@@ -24,7 +26,6 @@ public:
 	}
 
 	float GetFoV() const { return FoV; }
-
 
 	virtual void Register() override;
 	virtual void Destroy() override;
@@ -37,7 +38,8 @@ public:
 			GetTransform().ToMatrix(),
 			FoV,
 			MinZ,
-			uint2{Width, Height}
+			uint2{Width, Height},
+			ViewTranslation
 		};
 
 		return Out;

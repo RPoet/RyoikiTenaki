@@ -35,9 +35,12 @@ public:
 	virtual ~RRenderBackend() = default;
 
 
-	virtual void Init() {}
-	virtual void Teardown() {}
+	virtual void Init() {};
+	virtual void Teardown() {};
 	virtual void FunctionalityTestRender() {};
+
+	virtual void RenderBegin() {};
+	virtual void RenderFinish() {};
 
 	void SetBackendName(const String& NAME)
 	{
@@ -54,6 +57,6 @@ public:
 		return MainCommandList;
 	}
 
-	virtual RDynamicBuffer* GetGlobalDynamicBuffer() { return nullptr;  }
+	virtual RDynamicBuffer* GetGlobalDynamicBuffer(uint32 Index) { return nullptr;  }
 };
 

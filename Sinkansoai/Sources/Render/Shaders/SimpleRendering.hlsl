@@ -33,13 +33,15 @@ PSInput VSMain(float3 Position : POSITION
              , float3 Bitangent : BITANGENT      
              )
 {
+    const float3 WorldPosition = Position.xyz;
+
     PSInput Result;
-    Result.Position = mul( WorldToClip, float4(Position.xyz, 1) );
+    Result.Position = mul( WorldToClip, float4(WorldPosition, 1) );
     Result.UV = UV;
     Result.WorldPosition = Position.xyz;
-    Result.Normal = Normal.xyz;
-    Result.Tangent = Tangent.xyz;
-    Result.Bitangent = Bitangent.xyz;
+    Result.Normal = normalize(Normal.xyz);
+    Result.Tangent = normalize(Tangent.xyz);
+    Result.Bitangent = normalize(Bitangent.xyz);
 
     Result.Color = float4(UV, 0, 1);
     return Result;
@@ -58,7 +60,7 @@ void PSMain(PSInput In
     
     const uint TexutreBase = MaterialIndex * 2;
     const float4 DiffuseColor = MaterialTextures[TexutreBase + 0].Sample(Sampler, In.UV) * float4(1, 1, 1, 1);
-    const float3 LocalNormal = MaterialTextures[TexutreBase + 1].Sample(Sampler, In.UV).xyz * 2 - 1;
+    const float3 LocalNormal = normalize( MaterialTextures[TexutreBase + 1].Sample(Sampler, In.UV).xyz * 2 - 1 );
     
     const float3x3 TangentToWorld = float3x3(
         In.Tangent,
@@ -66,10 +68,10 @@ void PSMain(PSInput In
         In.Normal
     );
 
-    float3 WorldNormal = normalize( mul ( TangentToWorld, LocalNormal ) ) * 0.5f + 0.5f;
+    float3 WorldNormal = mul( TangentToWorld, LocalNormal ) * 0.5f + 0.5f;
 
     Color0 = float4(0, 0, 0, 1);
     Color1 = float4(DiffuseColor.xyz, 1);
     Color2 = float4(WorldNormal.xyz, 1);
-    Color3 = float4(1, 1, 1, 1);
+    Color3 = float4(In.Normal * 0.5f + 0.5f, 1);
 }

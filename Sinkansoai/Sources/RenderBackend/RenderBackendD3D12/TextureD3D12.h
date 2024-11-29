@@ -60,6 +60,7 @@ public:
 	{
 		SRVDesc.Format = Format;
 	}
+
 	friend class RRenderBackendD3D12;
 };
 
@@ -82,13 +83,24 @@ public:
 class RRenderTargetD3D12 : public RTextureD3D12
 {
 private:
+	bool bRTVGenerated;
+	D3D12_CPU_DESCRIPTOR_HANDLE DescriptorAddress;
 
 public:
 
 	RRenderTargetD3D12(RRenderBackendD3D12& Backend, const String& Name, uint32 Width, uint32 Height, uint32 NumMips, DXGI_FORMAT Format, EResourceFlag Flag = EResourceFlag::None)
 		: RTextureD3D12(Backend, Name, Width, Height, NumMips, Format, Flag)
+		, bRTVGenerated(false)
+		, DescriptorAddress()
 	{}
 
 	virtual void AllocateResource() override;
 
+	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorAddress() const
+	{
+		assert(bRTVGenerated && " RTV Should be generated first before using address ");
+		return DescriptorAddress;
+	}
+
+	void CreateRTV(D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor);
 };

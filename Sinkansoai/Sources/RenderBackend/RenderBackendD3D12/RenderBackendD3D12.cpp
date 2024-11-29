@@ -60,9 +60,30 @@ static String GetLatestWinPixGpuCapturerPath()
 }
 
 
+void RSceneTextures::InitSceneTextures(RRenderBackendD3D12& Backend)
+{
+	SceneDepth = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("MainDepthStencil"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R32G8X24_TYPELESS, EResourceFlag::DepthStencilTarget));
+	SceneDepth->AllocateResource();
+	SceneDepth->SetSRVFormat(DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS); // Refactoring this as Depth Stencil Target.
+
+	SceneColor = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("SceneColor"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget));
+	SceneColor->AllocateResource();
+
+	BaseColor = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("BaseColor"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget));
+	BaseColor->AllocateResource();
+
+	WorldNormal = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("WorldNormal"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget));
+	WorldNormal->AllocateResource();
+
+	Material = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("Material"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget));
+	Material->AllocateResource();
+
+	DebugTexture = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("DebugTexture"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R32G32B32A32_FLOAT, EResourceFlag::RenderTarget));
+	DebugTexture->AllocateResource();
+}
 
 RRenderBackendD3D12::RRenderBackendD3D12()
-	: DynamicBuffer(*this, TEXT("Global Buffer"))
+	: DynamicBuffers{ RDynamicBufferD3D12(*this, TEXT("Global Buffer0")) , RDynamicBufferD3D12(*this, TEXT("Global Buffer1")) }
 {
 	SetBackendName(TEXT("D3D12"));
 }
@@ -101,6 +122,15 @@ void RRenderBackendD3D12::Init()
 	}
 	else
 	{
+		// This is the highest version the sample supports. If CheckFeatureSupport succeeds, the HighestVersion returned will not be greater than this.
+		D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureData;
+		bSupportsRootSignatureVersion1_1 = true;
+		if (FAILED(Device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &FeatureData, sizeof(FeatureData))))
+		{
+			bSupportsRootSignatureVersion1_1 = false;
+		}
+
+
 		RTVDescriptorSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		DSVDescriptorSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 		CBVSRVUAVDescriptorSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -167,37 +197,8 @@ void RRenderBackendD3D12::Init()
 			cout << "Swap chain init success" << " SwapChain First Backbuffer Index : " << FrameIndex << endl;
 		}
 
+
 		auto DepthFormat = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
-		{
-			DynamicBuffer.Allocate(D3D12MaxConstantBufferSize);
-
-			// Default Texture
-			{
-				DefaultTexture = SharedPtr<RTexture2DD3D12>(new RTexture2DD3D12(*this, TEXT("CheckerTexture"), 256, 256, 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::None));
-				DefaultTexture->AllocateResource();
-
-				auto RawTexture = MTextureBuilder::Get().GenerateDefaultTexture(256, 256, 4);
-				DefaultTexture->StreamTexture(RawTexture.data());
-			}
-
-			{
-				SceneTextures.SceneDepth = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(*this, TEXT("MainDepthStencil"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R32G8X24_TYPELESS, EResourceFlag::DepthStencilTarget));
-				SceneTextures.SceneDepth->AllocateResource();
-				SceneTextures.SceneDepth->SetSRVFormat(DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS); // Refactoring this as Depth Stencil Target.
-
-				SceneTextures.SceneColor = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(*this, TEXT("SceneColor"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget));
-				SceneTextures.SceneColor->AllocateResource();
-
-				SceneTextures.BaseColor = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(*this, TEXT("BaseColor"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget));
-				SceneTextures.BaseColor->AllocateResource();
-
-				SceneTextures.WorldNormal = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(*this, TEXT("WorldNormal"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget));
-				SceneTextures.WorldNormal->AllocateResource();
-
-				SceneTextures.Material = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(*this, TEXT("Material"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget));
-				SceneTextures.Material->AllocateResource();
-			}
-		}
 
 		// Create testing resources
 		{
@@ -223,20 +224,32 @@ void RRenderBackendD3D12::Init()
 					Resource->StreamTexture(RawTexture.Pixels.data());
 				});
 
+
+			//_countof
+
+			for (auto& DynamicBuffer : DynamicBuffers)
+			{
+				DynamicBuffer.Allocate(D3D12MaxConstantBufferSize);
+			}
+
+			SceneTextures.InitSceneTextures(*this);
+
+			// Default Texture
+			{
+				DefaultTexture = SharedPtr<RTexture2DD3D12>(new RTexture2DD3D12(*this, TEXT("CheckerTexture"), 256, 256, 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::None));
+				DefaultTexture->AllocateResource();
+
+				auto RawTexture = MTextureBuilder::Get().GenerateDefaultTexture(256, 256, 4);
+				DefaultTexture->StreamTexture(RawTexture.data());
+			}
+
 			cout << " Test resource creation done " << endl;
 		}
 
 
 		// Create descriptor heaps.
 		{
-			// Describe and create a render target view (RTV) descriptor heap.
-
-			// Decriptor Heap -> Heap space for the views. not actual memory
-			// D3D12 uses view system which separate actual memory allocation and the view of it.
-			// So doesn't require change of the actual memory allocation but just change view to reuse allocated space.
-
-			// So finally decriptor heap means Heap space for the stored view.
-			// View is pointing actual data heap ( texture or buffer heap ).
+			// For swap chain RTV
 			D3D12_DESCRIPTOR_HEAP_DESC RTVHeapDesc = {};
 			RTVHeapDesc.NumDescriptors = NumBackBuffers;
 			RTVHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
@@ -263,31 +276,34 @@ void RRenderBackendD3D12::Init()
 
 			{
 				D3D12_DESCRIPTOR_HEAP_DESC SceneTextureRTVHeapDesc = {};
-				SceneTextureRTVHeapDesc.NumDescriptors = 4;
+				SceneTextureRTVHeapDesc.NumDescriptors = 5;
 				SceneTextureRTVHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 				SceneTextureRTVHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 				ThrowIfFailed(Device->CreateDescriptorHeap(&SceneTextureRTVHeapDesc, IID_PPV_ARGS(&SceneTextureRTVHeap)));
 
 
 				CD3DX12_CPU_DESCRIPTOR_HANDLE RTVHandle(SceneTextureRTVHeap->GetCPUDescriptorHandleForHeapStart());
-
-				Device->CreateRenderTargetView(SceneTextures.SceneColor->GetUnderlyingResource(), nullptr, RTVHandle);
+				SceneTextures.SceneColor->CreateRTV(RTVHandle);
 				RTVHandle.Offset(1, RTVDescriptorSize);
 
-				Device->CreateRenderTargetView(SceneTextures.BaseColor->GetUnderlyingResource(), nullptr, RTVHandle);
+				SceneTextures.BaseColor->CreateRTV(RTVHandle);
 				RTVHandle.Offset(1, RTVDescriptorSize);
 
-				Device->CreateRenderTargetView(SceneTextures.WorldNormal->GetUnderlyingResource(), nullptr, RTVHandle);
+				SceneTextures.WorldNormal->CreateRTV(RTVHandle);
 				RTVHandle.Offset(1, RTVDescriptorSize);
 
-				Device->CreateRenderTargetView(SceneTextures.Material->GetUnderlyingResource(), nullptr, RTVHandle);
+				SceneTextures.Material->CreateRTV(RTVHandle);
 				RTVHandle.Offset(1, RTVDescriptorSize);
 
+				SceneTextures.DebugTexture->CreateRTV(RTVHandle);
+				RTVHandle.Offset(1, RTVDescriptorSize);
+
+				//ScreenPassRTVHeap->
 				cout << "Descriptor rtv heap creation success" << endl;
 			}
 
 
-			const uint32 NumConstantBuffer = 1; // Global Dynamic Buffer ( View Buffer )
+			const uint32 NumConstantBuffer = _countof(DynamicBuffers);
 			const uint32 NumSceneTextures = 5; 
 			const uint32 NumTextures = RenderMesh.GetNumRegisteredTextures() + 1 + NumSceneTextures; // + 1 ( Default Texture )
 
@@ -310,7 +326,11 @@ void RRenderBackendD3D12::Init()
 					CBVSRVUAVGPUHandle.Offset(CBVSRVUAVDescriptorSize);
 				};
 
+				// Refactor belows terrible code boiler plate.
+
 				AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView] = CBVSRVUAVGPUHandle;
+
+				for (auto& DynamicBuffer : DynamicBuffers)
 				{
 					auto CBVDesc = DynamicBuffer.GetCBVDesc();
 					Device->CreateConstantBufferView(&CBVDesc, CBVSRVUAVCPUHandle);
@@ -391,6 +411,8 @@ void RRenderBackendD3D12::Init()
 					// No UAV to register
 				}
 
+				// Refactor end
+
 				cout << " Global Heap Cache Generation Done " << endl;
 			}
 		}
@@ -413,33 +435,36 @@ void RRenderBackendD3D12::Init()
 		GraphicsPipelines.emplace_back();
 		GraphicsPipelines.emplace_back();
 		GraphicsPipelines.emplace_back();
+		GraphicsPipelines.emplace_back();
 
-		D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureData = {};
 
-		// This is the highest version the sample supports. If CheckFeatureSupport succeeds, the HighestVersion returned will not be greater than this.
-		FeatureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+		D3D12_STATIC_SAMPLER_DESC Sampler = {};
+		Sampler.Filter = D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+		Sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		Sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		Sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		Sampler.MipLODBias = 0;
+		Sampler.MaxAnisotropy = 0;
+		Sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+		Sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+		Sampler.MinLOD = 0.0f;
+		Sampler.MaxLOD = D3D12_FLOAT32_MAX;
+		Sampler.ShaderRegister = 0;
+		Sampler.RegisterSpace = 0;
+		Sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-		if (FAILED(Device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &FeatureData, sizeof(FeatureData))))
-		{
-			cout << " Root signature 1_1 failed " << endl;
-			FeatureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
-		}
-
+		// TO DO : Make those pipelines inserted into hash map.
 		// Create mesh passes signature.
 		{
 			CD3DX12_DESCRIPTOR_RANGE1 Ranges[3]{};
 			Ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, NumRegisteredHeaps[EDescriptorHeapAddressSpace::ConstantBufferView], 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 			Ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, NumRegisteredHeaps[EDescriptorHeapAddressSpace::ShaderResourceView], 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-
 			//Ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, NumRegisteredHeaps[EDescriptorHeapAddressSpace::UnorderedAccessView], 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-
 
 			CD3DX12_ROOT_PARAMETER1 RootParameters[5]{};
 			RootParameters[0].InitAsDescriptorTable(1, &Ranges[0], D3D12_SHADER_VISIBILITY_ALL);
 			RootParameters[1].InitAsDescriptorTable(1, &Ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);
-
 			//RootParameters[2].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE,D3D12_SHADER_VISIBILITY_PIXEL);
-
 			RootParameters[3].InitAsConstants(3, 0, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 			RootParameters[4].InitAsConstants(1, 0, 2, D3D12_SHADER_VISIBILITY_PIXEL);
 
@@ -451,42 +476,14 @@ void RRenderBackendD3D12::Init()
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
-			D3D12_STATIC_SAMPLER_DESC Sampler = {};
-			Sampler.Filter = D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
-			Sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-			Sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-			Sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-			Sampler.MipLODBias = 0;
-			Sampler.MaxAnisotropy = 0;
-			Sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-			Sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-			Sampler.MinLOD = 0.0f;
-			Sampler.MaxLOD = D3D12_FLOAT32_MAX;
-			Sampler.ShaderRegister = 0;
-			Sampler.RegisterSpace = 0;
-			Sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
 			CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC RootSignatureDesc;
 			RootSignatureDesc.Init_1_1(_countof(RootParameters), RootParameters, 1, &Sampler, RootSignatureFlags);
 
-			ComPtr<ID3DBlob> Signature;
-			ComPtr<ID3DBlob> Error;
-			D3DX12SerializeVersionedRootSignature(&RootSignatureDesc, FeatureData.HighestVersion, &Signature, &Error);
-			if (Error)
-			{
-				cout << (char*)Error->GetBufferPointer() << endl;
-				Error->Release();
-				ThrowIfFailed(S_FALSE);
-			}
-
-			ThrowIfFailed(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&GraphicsPipelines[EGraphicsPipeline::Prepass].GetRootSignature())));
-
+			CreateRootSignature(RootSignatureDesc, GraphicsPipelines[EGraphicsPipeline::Prepass]);
 			GraphicsPipelines[EGraphicsPipeline::Prepass].GetRootSignature()->SetName(TEXT("PrepassRS"));
 
-			ThrowIfFailed(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&GraphicsPipelines[EGraphicsPipeline::Basepass].GetRootSignature())));
-
+			CreateRootSignature(RootSignatureDesc, GraphicsPipelines[EGraphicsPipeline::Basepass]);
 			GraphicsPipelines[EGraphicsPipeline::Basepass].GetRootSignature()->SetName(TEXT("BasepassRS"));
-
 
 			cout << "Rootsignature creation success" << endl;
 		}
@@ -497,49 +494,24 @@ void RRenderBackendD3D12::Init()
 			Ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, NumRegisteredHeaps[EDescriptorHeapAddressSpace::ConstantBufferView], 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 			Ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
-			CD3DX12_ROOT_PARAMETER1 RootParameters[5]{};
+			CD3DX12_ROOT_PARAMETER1 RootParameters[2]{};
 			RootParameters[0].InitAsDescriptorTable(1, &Ranges[0], D3D12_SHADER_VISIBILITY_ALL);
 			RootParameters[1].InitAsDescriptorTable(1, &Ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);
 
-			// Add lighting data
-
-			// Allow input layout and deny uneccessary access to certain pipeline stages.
 			D3D12_ROOT_SIGNATURE_FLAGS RootSignatureFlags =
 				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
-			D3D12_STATIC_SAMPLER_DESC Sampler = {};
-			Sampler.Filter = D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
-			Sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-			Sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-			Sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-			Sampler.MipLODBias = 0;
-			Sampler.MaxAnisotropy = 0;
-			Sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-			Sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-			Sampler.MinLOD = 0.0f;
-			Sampler.MaxLOD = D3D12_FLOAT32_MAX;
-			Sampler.ShaderRegister = 0;
-			Sampler.RegisterSpace = 0;
-			Sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 			CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC RootSignatureDesc;
 			RootSignatureDesc.Init_1_1(_countof(RootParameters), RootParameters, 1, &Sampler, RootSignatureFlags);
 
-			ComPtr<ID3DBlob> Signature;
-			ComPtr<ID3DBlob> Error;
-			D3DX12SerializeVersionedRootSignature(&RootSignatureDesc, FeatureData.HighestVersion, &Signature, &Error);
-			if (Error)
-			{
-				cout << (char*)Error->GetBufferPointer() << endl;
-				Error->Release();
-				ThrowIfFailed(S_FALSE);
-			}
+			CreateRootSignature(RootSignatureDesc, GraphicsPipelines[EGraphicsPipeline::DeferredLighting]);
+			GraphicsPipelines[EGraphicsPipeline::DeferredLighting].GetRootSignature()->SetName(TEXT("DeferredLightingRS"));
 
-			ThrowIfFailed(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&GraphicsPipelines[EGraphicsPipeline::DeferredLighting].GetRootSignature())));
-
+			CreateRootSignature(RootSignatureDesc, GraphicsPipelines[EGraphicsPipeline::Postprocess]);
 			GraphicsPipelines[EGraphicsPipeline::DeferredLighting].GetRootSignature()->SetName(TEXT("DeferredLightingRS"));
 			cout << "Deferred Lighting Rootsignature creation success" << endl;
 		}
@@ -614,10 +586,9 @@ void RRenderBackendD3D12::Init()
 			cout << " Basepass done " << endl;
 		}
 
-
 		// Lighting PSO
 		{
-			TRefCountPtr<ID3DBlob> VertexShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/Lighting.hlsl"), TEXT("VSMain"), EShaderType::VS);
+			TRefCountPtr<ID3DBlob> VertexShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/ScreenPass.hlsl"), TEXT("VSMain"), EShaderType::VS);
 			TRefCountPtr<ID3DBlob> PixelShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/Lighting.hlsl"), TEXT("PSMain"), EShaderType::PS);
 
 			// D3D12_INPUT_ELEMENT_DESC InputElementDescs{};
@@ -641,10 +612,45 @@ void RRenderBackendD3D12::Init()
 			PSODesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
 			PSODesc.SampleMask = UINT_MAX;
 			PSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSODesc.NumRenderTargets = 2;
+			PSODesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM; // Scene Color
+			PSODesc.RTVFormats[1] = DXGI_FORMAT_R32G32B32A32_FLOAT; // Debug Texture
+			PSODesc.SampleDesc.Count = 1;
+			ThrowIfFailed(Device->CreateGraphicsPipelineState(&PSODesc, IID_PPV_ARGS(&GraphicsPipelines[EGraphicsPipeline::DeferredLighting].GetPipelineStateObject())));
+
+			cout << " Lighting Pass done " << endl;
+		}
+
+		// Postprocess PSO
+		{
+			TRefCountPtr<ID3DBlob> VertexShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/ScreenPass.hlsl"), TEXT("VSMain"), EShaderType::VS);
+			TRefCountPtr<ID3DBlob> PixelShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/Postprocess.hlsl"), TEXT("PSMain"), EShaderType::PS);
+
+			// D3D12_INPUT_ELEMENT_DESC InputElementDescs{};
+
+			// Describe and create the graphics pipeline state object (PSO).
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {};
+			PSODesc.InputLayout = { nullptr, 0 };
+			PSODesc.pRootSignature = GraphicsPipelines[EGraphicsPipeline::Postprocess].GetRootSignature().Get();
+			PSODesc.VS = CD3DX12_SHADER_BYTECODE{ VertexShader.Get() };
+			PSODesc.PS = CD3DX12_SHADER_BYTECODE{ PixelShader.Get() };
+			PSODesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+			PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+			PSODesc.RasterizerState.DepthClipEnable = false;
+
+			PSODesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+
+			PSODesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+			PSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+			PSODesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+
+			PSODesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+			PSODesc.SampleMask = UINT_MAX;
+			PSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 			PSODesc.NumRenderTargets = 1;
 			PSODesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 			PSODesc.SampleDesc.Count = 1;
-			ThrowIfFailed(Device->CreateGraphicsPipelineState(&PSODesc, IID_PPV_ARGS(&GraphicsPipelines[EGraphicsPipeline::DeferredLighting].GetPipelineStateObject())));
+			ThrowIfFailed(Device->CreateGraphicsPipelineState(&PSODesc, IID_PPV_ARGS(&GraphicsPipelines[EGraphicsPipeline::Postprocess].GetPipelineStateObject())));
 
 			cout << " Lighting Pass done " << endl;
 		}
@@ -665,7 +671,6 @@ void RRenderBackendD3D12::Init()
 			WaitForPreviousFence();
 			cout << " Test fence creation " << endl;
 
-
 			{
 				CD3DX12_RESOURCE_BARRIER Barriers[] =
 				{
@@ -674,6 +679,8 @@ void RRenderBackendD3D12::Init()
 					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.BaseColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ),
 					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.WorldNormal->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ),
 					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.Material->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ),
+
+					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.DebugTexture->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET),
 				};
 				CommandList->ResourceBarrier(_countof(Barriers), Barriers);
 			}
@@ -716,7 +723,7 @@ void RRenderBackendD3D12::Prepass()
 	auto& CommandList = CommandLists[0].CommandList;
 	PIXScopedEvent(CommandLists[0].CommandList, 0xFF, TEXT("Prepass"));
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
+	auto DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
 	CommandList->ClearDepthStencilView(DSVHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 0, 0, 0, nullptr);
 	CommandList->OMSetRenderTargets(0, nullptr, false, &DSVHandle);
 
@@ -747,14 +754,13 @@ void RRenderBackendD3D12::Basepass()
 	auto& CommandList = CommandLists[0].CommandList;
 	PIXScopedEvent(CommandLists[0].CommandList, 0xFFFF, TEXT("Basepass"));
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE RTVHandle(SceneTextureRTVHeap->GetCPUDescriptorHandleForHeapStart());
-	CD3DX12_CPU_DESCRIPTOR_HANDLE DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
+	auto RTVHandle(SceneTextureRTVHeap->GetCPUDescriptorHandleForHeapStart());
+	auto DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
 
 	// Record commands.
 	const float ClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-
 	CommandList->ClearRenderTargetView(RTVHandle, ClearColor, 0, nullptr);
-	CommandList->OMSetRenderTargets(4, &RTVHandle, true, &DSVHandle);
+	CommandList->OMSetRenderTargets(5, &RTVHandle, true, &DSVHandle);
 
 	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
 	CommandList->SetDescriptorHeaps(_countof(Heaps), Heaps);
@@ -784,23 +790,55 @@ void RRenderBackendD3D12::Basepass()
 		CommandList->SetGraphicsRoot32BitConstant(4, Section.MaterialId, 0);
 		CommandList->DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
 	}
-
-
 }
 
-void RRenderBackendD3D12::AfterBasepass()
+
+void RRenderBackendD3D12::RenderLights(RRenderCommandListD3D12& CommandList)
+{
+	PIXScopedEvent(CommandList.GetRawCommandList(), 0xFFFF, TEXT("RenderLights"));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE RTVHandles[] =
+	{
+		SceneTextures.SceneColor->GetDescriptorAddress(),
+		SceneTextures.DebugTexture->GetDescriptorAddress(),
+	};
+
+	const float ClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	for (auto& RTV : RTVHandles)
+	{
+		CommandList.GetRawCommandList()->ClearRenderTargetView(RTV, ClearColor, 0, nullptr);
+	}
+
+	CommandList.GetRawCommandList()->OMSetRenderTargets(_countof(RTVHandles), RTVHandles, false, nullptr);
+	CommandList.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::DeferredLighting]);
+
+	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
+	CommandList.GetRawCommandList()->SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList.GetRawCommandList()->SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
+	CommandList.GetRawCommandList()->SetGraphicsRootDescriptorTable(1, SceneTextures.GPUAddressHandle);
+
+	CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	CommandList.GetRawCommandList()->DrawInstanced(3, 1, 0, 0);
+}
+
+
+void RRenderBackendD3D12::Postprocess()
 {
 	auto& D3D12CommandList = CommandLists[0];
 	auto& CommandList = CommandLists[0].CommandList;
 
-	PIXScopedEvent(CommandLists[0].CommandList, 0xFFFF, TEXT("AfterBasePass"));
+	PIXScopedEvent(CommandLists[0].CommandList, 0xFFFF, TEXT("Postprocess"));
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE RTVHandle(RTVHeap->GetCPUDescriptorHandleForHeapStart(), FrameIndex, RTVDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE RTVHandles[] =
+	{ 
+		CD3DX12_CPU_DESCRIPTOR_HANDLE( RTVHeap->GetCPUDescriptorHandleForHeapStart(), FrameIndex, RTVDescriptorSize ),
+	};
+
 	const float ClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-	CommandList->ClearRenderTargetView(RTVHandle, ClearColor, 0, nullptr);
-	CommandList->OMSetRenderTargets(1, &RTVHandle, false, nullptr);
+	CommandList->ClearRenderTargetView(RTVHandles[0], ClearColor, 0, nullptr);
+	CommandList->OMSetRenderTargets(1, RTVHandles, false, nullptr);
 
-	D3D12CommandList.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::DeferredLighting]);
+	D3D12CommandList.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::Postprocess]);
 
 	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
 	CommandList->SetDescriptorHeaps(_countof(Heaps), Heaps);
@@ -813,10 +851,9 @@ void RRenderBackendD3D12::AfterBasepass()
 
 void RRenderBackendD3D12::FunctionalityTestRender()
 {
-	CommandLists[0].Reset();
-
 	auto& D3D12CommandList = CommandLists[0];
 	auto& CommandList = CommandLists[0].CommandList;
+
 	{
 		PIXScopedEvent(CommandLists[0].CommandList, 0xFFFFFFFF, TEXT("FunctionalityTestRender"));
 
@@ -843,12 +880,13 @@ void RRenderBackendD3D12::FunctionalityTestRender()
 			};
 			CommandList->ResourceBarrier(_countof(Barriers), Barriers);
 		}
+
 		Basepass();
 
 		{
 			CD3DX12_RESOURCE_BARRIER Barriers[] =
 			{ 
-				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				// CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
 				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.BaseColor->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
 				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.WorldNormal->GetUnderlyingResource(),D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
 				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.Material->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
@@ -858,7 +896,19 @@ void RRenderBackendD3D12::FunctionalityTestRender()
 			};
 			CommandList->ResourceBarrier(_countof(Barriers), Barriers);
 		}
-		AfterBasepass();
+
+		RenderLights(CommandLists[0]);
+
+		{
+			CD3DX12_RESOURCE_BARRIER Barriers[] =
+			{
+				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+			};
+			CommandList->ResourceBarrier(_countof(Barriers), Barriers);
+		}
+
+		Postprocess();
+
 		{
 			CD3DX12_RESOURCE_BARRIER Barriers[] =
 			{
@@ -868,17 +918,20 @@ void RRenderBackendD3D12::FunctionalityTestRender()
 		}
 	}
 
-	CommandLists[0].Close();
-	// Execute the command list.
-	ID3D12CommandList* ppCommandLists[] = { CommandList };
-	CommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+	Execute();
 
 	// Present the frame.
 	ThrowIfFailed(SwapChain->Present(1, 0));
+}
 
-	WaitForPreviousFence();
+void RRenderBackendD3D12::Execute()
+{
+	CommandLists[0].Close();
 
-	RenderFinish();
+	// Execute the command list.
+	ID3D12CommandList* ppCommandLists[] = { CommandLists[0].GetRawCommandList()};
+	CommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
 }
 
 void RRenderBackendD3D12::WaitForPreviousFence()
@@ -898,14 +951,24 @@ void RRenderBackendD3D12::WaitForPreviousFence()
 
 }
 
+void RRenderBackendD3D12::RenderBegin()
+{
+	auto& D3D12CommandList = CommandLists[0];
+	D3D12CommandList.Reset();
+
+	PIXBeginEvent(D3D12CommandList.GetRawCommandList(), 0xFFFFFFFF, TEXT("RenderFrame"));
+}
+
 void RRenderBackendD3D12::RenderFinish()
 {
 	// Flush temp buffer done its purposes.
 	// After implementing asynchronous GPU flow, this should be changed as following the GPU lifetime.
 	UploadHeapReferences.clear();
 
-}
+	PIXEndEvent();
 
+	WaitForPreviousFence();
+}
 
 D3D12_RESOURCE_DESC CreateResourceDescD3D12(EResourceType ResourceType, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height, uint32 NumMips, uint32 ArraySize)
 {
@@ -1037,4 +1100,20 @@ TRefCountPtr<ID3D12Resource> RRenderBackendD3D12::CreateUploadHeap(uint32 Upload
 
 	UploadHeapReferences.push_back(Resource);
 	return Resource;
+}
+
+void RRenderBackendD3D12::CreateRootSignature(const CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC& RootSignatureDesc, RGraphicsPipeline& Pipepline)
+{
+	ComPtr<ID3DBlob> Signature;
+	ComPtr<ID3DBlob> Error;
+
+	D3DX12SerializeVersionedRootSignature(&RootSignatureDesc, bSupportsRootSignatureVersion1_1 ? D3D_ROOT_SIGNATURE_VERSION_1_1 : D3D_ROOT_SIGNATURE_VERSION_1_0, &Signature, &Error);
+	if (Error)
+	{
+		cout << (char*)Error->GetBufferPointer() << endl;
+		Error->Release();
+		ThrowIfFailed(S_FALSE);
+	}
+
+	ThrowIfFailed(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&Pipepline.GetRootSignature())));
 }

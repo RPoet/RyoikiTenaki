@@ -303,6 +303,8 @@ uint32 GetPerFormatPixelSizeInBytes(DXGI_FORMAT Format)
 
 void RTexture2DD3D12::AllocateResource()
 {
+	RRenderResource::AllocateResource();
+
 	UnderlyingResource = Backend.CreateTexture2DResource(Name.c_str(), Flag, Format, Width, Height);
 
 	SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; // change this function of the inputs.
@@ -322,6 +324,8 @@ void RTexture2DD3D12::StreamTexture(void* pData)
 
 void RRenderTargetD3D12::AllocateResource()
 {
+	RRenderResource::AllocateResource();
+
 	UnderlyingResource = Backend.CreateRenderTargetResource(Name.c_str(), Flag, Format, Width, Height);
 
 	SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; // Check
@@ -330,3 +334,9 @@ void RRenderTargetD3D12::AllocateResource()
 	SRVDesc.Texture2D.MipLevels = NumMips;
 }
 
+void RRenderTargetD3D12::CreateRTV(D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+{
+	Backend.GetDevice()->CreateRenderTargetView(GetUnderlyingResource(), nullptr, DestDescriptor);
+	bRTVGenerated = true;
+	DescriptorAddress = DestDescriptor;
+}

@@ -23,8 +23,14 @@ public:
 	}
 
 
-	virtual void AllocateResource() {};
+	virtual void AllocateResource()
+	{
+		bInitialized = true;
+	};
 
-	virtual void DeallocateResource() {};
+	virtual void DeallocateResource()
+	{
+		bInitialized = false;
+	};
 };
 

@@ -3,6 +3,8 @@
 
 void RVertexBufferD3D12::AllocateResource()
 {
+	RRenderResource::AllocateResource();
+
 	auto HeapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	auto ResourceDesc = CD3DX12_RESOURCE_DESC::Buffer(VertexBufferSize);
 
@@ -33,6 +35,8 @@ void RVertexBufferD3D12::DeallocateResource()
 
 void RIndexBufferD3D12::AllocateResource()
 {
+	RRenderResource::AllocateResource();
+
 	const uint32 IndexBufferSize = IndexBuffer.size() * sizeof(uint32);
 	auto HeapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	auto ResourceDesc = CD3DX12_RESOURCE_DESC::Buffer(IndexBufferSize);

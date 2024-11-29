@@ -1,63 +1,51 @@
-#include "View.hlsl"
+#include "ScreenPass.hlsl"
+#include "SceneTextures.hlsl"
 
-static const float Edge = 3;
-static float4 VertexPositions[3] =
-{
-    float4(1.0, Edge, 0.5, 1.0),
-    float4(-Edge, -1.0, 0.5, 1.0),
-    float4(1.0, -1.0, 0.5, 1.0)
-};
-
-struct PSInput
-{
-    float4 Position : SV_POSITION;
-    float4 Color : COLOR;
-};
-
-PSInput VSMain(uint VertexId : SV_VertexID)
-{
-    const float Edge = 3;
-    PSInput Result;
-    Result.Position = VertexPositions[VertexId];
-    Result.Color = clamp(Result.Position, 0, 1);
-    return Result;
-}
-
-Texture2D<float>  SceneDepthTexture  : register(t0);
-Texture2D<float4> SceneColor         : register(t1);
-Texture2D<float4> BaseColorTexture   : register(t2);
-Texture2D<float4> WorldNormalTexture : register(t3);
-Texture2D<float4> MaterialTexture    : register(t4);
-
-float4 PSMain(PSInput In) : SV_TARGET
+void PSMain( in PSInput In,
+            out float4 SceneColor  : SV_TARGET0,
+            out float4 Debug : SV_TARGET1 )
 { 
     float2 SVPosition = In.Position.xy;
-    float2 BufferUV = (In.Position.xy + 0.5f)* rcp(ViewRect);
-
+    float2 BufferUV = (In.Position.xy + 0.5f) * rcp(ViewRect);
     uint2 PixelPosition = SVPosition.xy;
 
-    float Depth = SceneDepthTexture[PixelPosition];
+    float DeviceZ = SceneDepthTexture[PixelPosition];
+    float SceneDepth = CalcSceneDepth( DeviceZ );
     float4 BaseColor = BaseColorTexture[PixelPosition];
-    float4 WorldNormal = WorldNormalTexture[PixelPosition];
 
-#if 1
+    float4 GBuffer0 = WorldNormalTexture[PixelPosition];
+    float3 WorldNormal = normalize( GBuffer0.xyz * 2.0f - 1.0f );
+
+    float4 GBuffer1 = MaterialTexture[PixelPosition];
+    float3 VertexWorldNormal = normalize( GBuffer1.xyz * 2.0f - 1.0f );
+
+    float3 ViewVector = normalize(In.ScreenVector.xyz);
+    float3 ViewPosition = ViewVector * SceneDepth;
+    float3 WorldPosition = mul( ViewToWorldMatrix, float4( ViewPosition, 1 ) ).xyz;
+
+    float3 Color = CalcDirectionalLight( DirectionalLight, VertexWorldNormal.xyz, ViewVector, BaseColor.xyz );
+  
+    SceneColor = 0;
+    Debug = 0;
+      
     if( DebugInput == 0 )
     {
-        return float4( BaseColor );
+        SceneColor = float4( Color, 1 );
+        Debug = float4(In.ScreenVector.xyz * SceneDepth, SceneDepth);
+        return;
     }
     
     if( DebugInput == 1 )
     {
-        return float4( Depth, Depth, Depth, 1 ) * 20.0f;
+        SceneColor =float4( GBuffer1.xyz, 1 );
+        Debug = float4( SceneDepth, SceneDepth, SceneDepth, SceneDepth );
+        return;
     }
     
     if( DebugInput == 2 )
     {
-        return float4( WorldNormal );
+        SceneColor = float4( GBuffer0.xyz, 1 );
+        Debug = float4( SceneDepth, SceneDepth, SceneDepth, SceneDepth );
+        return;
     }
-
-    return float4(0,0,0,1);
-#else 
-    return float4( BaseColor );
-#endif
 }

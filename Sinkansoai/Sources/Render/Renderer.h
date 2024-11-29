@@ -13,9 +13,11 @@ private:
 
 	RScene& Scene;
 
-	vector< RViewContext > ViewContexts;
-	vector< RViewMatrices > ViewMatrices;
+	vector< RViewContext > ViewContexts{};
+	vector< RViewMatrices > ViewMatrices{};
 	
+	RLightData LightData{};
+
 public:
 	RRenderer(RScene& Scene);
 	~RRenderer() = default;
