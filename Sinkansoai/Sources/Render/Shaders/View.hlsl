@@ -39,7 +39,7 @@ float3 CalcDirectionalLight(Directional Light, float3 N, float3 V, float3 BaseCo
     float3 R = reflect(-L, N);
     float VoR = max(dot(V, R), 0.0);
 		
-    float3 Diffuse  = Light.Diffuse.xyz  * NoL * BaseColor * rcp(3.141592);
+    float3 Diffuse  = Light.Diffuse.xyz  * NoL * BaseColor;
     float3 Specular = 0;//Light.Specular.xyz * VoR * (1 - NoL) * 0.1f;
     return (Diffuse + Specular);
 }  

@@ -308,9 +308,6 @@
     <ClInclude Include="Sources\Module\Mesh\MeshBuilder.h">
       <Filter>Module\Mesh</Filter>
     </ClInclude>
-    <ClInclude Include="Sources\Module\Mesh\TinyObjLoader.h">
-      <Filter>Module\Mesh</Filter>
-    </ClInclude>
     <ClInclude Include="Sources\Module\Texture\TextureBuilder.h">
       <Filter>Module\Texture</Filter>
     </ClInclude>
@@ -324,6 +321,9 @@
       <Filter>RenderBackend</Filter>
     </ClInclude>
     <ClInclude Include="Sources\Module\ShaderCompiler\ShaderCompiler.h">
+      <Filter>Module\ShaderCompiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Module\Mesh\TinyObjLoader.h">
       <Filter>Module\ShaderCompiler</Filter>
     </ClInclude>
   </ItemGroup>

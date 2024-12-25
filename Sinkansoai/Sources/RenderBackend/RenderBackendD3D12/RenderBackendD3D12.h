@@ -22,6 +22,7 @@ enum EGraphicsPipeline
 {
 	Prepass,
 	Basepass,
+	ForwardLighting,
 	DeferredLighting,
 	Postprocess,
 	NumPasses = DeferredLighting + 1
@@ -152,10 +153,11 @@ public:
 
 	void Prepass();
 	void Basepass();
+	void RenderForwardLights(RRenderCommandListD3D12& CommandList);
 	void RenderLights(RRenderCommandListD3D12& CommandList);
 	void Postprocess();
 
-	virtual void FunctionalityTestRender() override;
+	virtual void FunctionalityTestRender(bool bDeferred) override;
 
 	ID3D12Device* GetDevice()
 	{

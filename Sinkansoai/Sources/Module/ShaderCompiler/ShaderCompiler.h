@@ -14,5 +14,6 @@ public:
 	virtual void Teardown() override;
 
 	ID3DBlob* CompileShader(String&& FileName, String&& Entry, EShaderType ShaderType);
+	ID3DBlob* CompileShader(String&& FileName, String&& Entry, const vector<D3D_SHADER_MACRO>& Defines, EShaderType ShaderType);
 };
 

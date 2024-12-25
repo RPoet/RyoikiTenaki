@@ -6,6 +6,8 @@
 
 
 MTransform DirectionalLight{};
+uint32 DebugInput = 0;
+bool GUseDeferredShading = 0;
 
 
 RRenderer::RRenderer(RScene& Scene)
@@ -13,8 +15,6 @@ RRenderer::RRenderer(RScene& Scene)
 {
 	DirectionalLight.Rotation.x = 55.0f;
 }
-
-uint32 DebugInput = 0;
 
 
 void RRenderer::ResolveViewMatrices()
@@ -48,6 +48,21 @@ void RRenderer::ResolveViewMatrices()
 		DebugInput = 2;
 	}
 
+	if (MInput::Get().IsPressed('3'))
+	{
+		DebugInput = 3;
+	}
+
+	if (MInput::Get().IsPressed('4'))
+	{
+		DebugInput = 4;
+	}
+
+	if (MInput::Get().IsPressed('5'))
+	{
+		DebugInput = 5;
+	}
+
 	ViewMatrices[0].DebugValue = DebugInput;
 
 	DirectionalLight.Rotation.y += Scene.GetDeltaTime() * 45;
@@ -70,13 +85,23 @@ void RRenderer::RenderDeferredShading(RRenderCommandList& CommandList)
 	GlobalDynamicBuffer0->CopyData(ViewMatrices[0]);
 	GlobalDynamicBuffer1->CopyData(LightData);
 
-	GBackend->FunctionalityTestRender();
+	GBackend->FunctionalityTestRender(true);
 	GBackend->RenderFinish();
 }
 
 void RRenderer::RenderForwardShading(RRenderCommandList& CommandList)
 {
-	cout << "Render Forward Shading" << endl;
+	GBackend->RenderBegin();
+	ResolveViewMatrices();
+
+	auto GlobalDynamicBuffer0 = GBackend->GetGlobalDynamicBuffer(0); // 0 used for view
+	auto GlobalDynamicBuffer1 = GBackend->GetGlobalDynamicBuffer(1); // 1 used for light data
+
+	GlobalDynamicBuffer0->CopyData(ViewMatrices[0]);
+	GlobalDynamicBuffer1->CopyData(LightData);
+
+	GBackend->FunctionalityTestRender(false);
+	GBackend->RenderFinish();
 }
 
 void DrawViweport_RT(RRenderCommandList& CommandList, RScene& Scene, const RViewContext& ViewContext)
@@ -84,7 +109,13 @@ void DrawViweport_RT(RRenderCommandList& CommandList, RScene& Scene, const RView
 	auto Renderer = new RRenderer(Scene);
 	Renderer->AddView(ViewContext);
 
-	const bool bDeferredShading = true;
+
+	if (MInput::Get().IsPressed('K'))
+	{
+		GUseDeferredShading = !GUseDeferredShading;
+	}
+
+	const bool bDeferredShading = GUseDeferredShading;
 
 	if (bDeferredShading)
 	{

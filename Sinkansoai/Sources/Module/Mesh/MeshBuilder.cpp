@@ -345,11 +345,17 @@ MMesh MMeshBuilder::LoadMesh(const String& Path, const String& ModelName)
 				float2 dUV0 = vertex[1].texCoord - vertex[0].texCoord;
 				float2 dUV1 = vertex[2].texCoord - vertex[0].texCoord;
 
-				float Det = dUV1.x * dUV0.y - dUV0.x * dUV1.y;
+				float U0 = dUV0.x;
+				float V0 = dUV0.y;
+
+				float U1 = dUV1.x;
+				float V1 = dUV1.y;
+
+				float Det = U0 * V1 - V0 * U1;
 				if (Det == 0)
 				{
-					TriTangent = { 1.0f, 0.0f, 0.0f };
-					BiTangent = { 0.0f, 1.0f, 0.0f };
+					TriTangent = { -1.0f, 0.0f, 0.0f };
+					BiTangent = { 0.0f, -1.0f, 0.0f };
 				}
 				else
 				{
@@ -357,17 +363,23 @@ MMesh MMeshBuilder::LoadMesh(const String& Path, const String& ModelName)
 					float f = 1.0f / Det;
 
 					// Simple matrix calculation.
-					TriTangent.x = f * (dUV1.y * E0.x - dUV0.y * E1.x);
-					TriTangent.y = f * (dUV1.y * E0.y - dUV0.y * E1.y);
-					TriTangent.z = f * (dUV1.y * E0.z - dUV0.y * E1.z);
+					TriTangent.x = f * ( ( V1 * E0.x ) + ( -V0 * E1.x ) );
+					TriTangent.y = f * ( ( V1 * E0.y ) + ( -V0 * E1.y ) );
+					TriTangent.z = f * ( ( V1 * E0.z ) + ( -V0 * E1.z ) );
 
-					BiTangent.x = f * (-dUV1.x * E0.x + dUV0.x * E1.x);
-					BiTangent.y = f * (-dUV1.x * E0.y + dUV0.x * E1.y);
-					BiTangent.z = f * (-dUV1.x * E0.z + dUV0.x * E1.z);
+					BiTangent.x = f * (( -U1 * E0.x ) + ( U0 * E1.x ));
+					BiTangent.y = f * (( -U1 * E0.y ) + ( U0 * E1.y ));
+					BiTangent.z = f * (( -U1 * E0.z ) + ( U0 * E1.z ));
 
 					TriTangent = Normalize(TriTangent);
 					BiTangent = Normalize(BiTangent);
 				}
+			}
+
+			for (int32 iTri = 0; iTri < 3; ++iTri)
+			{
+				vertex[iTri].tangent = TriTangent;
+				vertex[iTri].bitangent = BiTangent;
 			}
 
 
@@ -380,9 +392,7 @@ MMesh MMeshBuilder::LoadMesh(const String& Path, const String& ModelName)
 
 			for (int32 iTri = 0; iTri < 3; ++iTri)
 			{
-				vertex[iTri].tangent = TriTangent;
-				vertex[iTri].bitangent = BiTangent;
-				GramSchmidt(vertex[iTri].tangent, vertex[iTri].bitangent, vertex[iTri].normal);
+				//GramSchmidt(vertex[iTri].tangent, vertex[iTri].bitangent, vertex[iTri].normal);
 
 				if (UniqueVertices.count(vertex[iTri]) == 0)
 				{

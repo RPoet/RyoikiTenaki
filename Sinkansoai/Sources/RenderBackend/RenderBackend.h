@@ -37,7 +37,7 @@ public:
 
 	virtual void Init() {};
 	virtual void Teardown() {};
-	virtual void FunctionalityTestRender() {};
+	virtual void FunctionalityTestRender(bool bDeferred) {};
 
 	virtual void RenderBegin() {};
 	virtual void RenderFinish() {};
