@@ -3,15 +3,15 @@
 
 cbuffer View : register(b0, space0)
 {
-    float4x4 ViewToWorldMatrix;
-    float4x4 WorldToViewMatrix;
-    float4x4 ProjMatrix;
-    float4x4 InvProjMatrix;
-    float4x4 WorldToClip;
+	float4x4 ViewToWorldMatrix;
+	float4x4 WorldToViewMatrix;
+	float4x4 ProjMatrix;
+	float4x4 InvProjMatrix;
+	float4x4 WorldToClip;
 
-    float DeltaTime;
-    float WorldTime;
-    uint2 ViewRect;
+	float DeltaTime;
+	float WorldTime;
+	uint2 ViewRect;
 	uint DebugInput;
 
 	float3 ViewTranslation;
@@ -26,22 +26,78 @@ struct Directional
 	float4 Specular;
 };
 
+struct Point
+{
+	float4 WorldPositionAndIntensity;
+	float4 Color;
+};
+
 cbuffer LightData : register(b1, space0)
 {
 	Directional DirectionalLight;
+	Point PointLights[500];
+	uint NumPointLights;
+	uint3 Pad;
+};
+
+struct LightContext
+{
+	float Intensity;
+	float3 WorldPosition;
+	float3 LightWorldPosition;
+	float3 Color;
+
+	float StartFalloff;
+	float EndFalloff;	
 };
 
 float3 CalcDirectionalLight(Directional Light, float3 N, float3 V, float3 BaseColor)
 {
-    float3 L = normalize(-Light.Direction.xyz);
+	const float kPi = 3.14159265;
+	const float kShininess = 4.0;
+	const float LightIntensity = 1;
+	const float kEnergyConservation = ( 8.0 + kShininess ) / ( 8.0 * kPi ); 
 
-    float NoL = max(dot(N, L), 0.0);
-    float3 R = reflect(-L, N);
-    float VoR = max(dot(V, R), 0.0);
-		
-    float3 Diffuse  = Light.Diffuse.xyz  * NoL * BaseColor;
-    float3 Specular = 0;//Light.Specular.xyz * VoR * (1 - NoL) * 0.1f;
-    return (Diffuse + Specular);
+	float3 L = normalize(-Light.Direction.xyz);
+	float3 H = normalize(L + V);
+
+	float NoL = max(dot(N, L), 0.0);
+	float3 R = reflect(-L, N);
+	float VoR = max(dot(V, R), 0.0);
+
+	float3 Diffuse  = Light.Diffuse.xyz * rcp(kPi)  * NoL * BaseColor;
+	float3 Specular = 0;//kEnergyConservation * pow(max(dot(N, H), 0.0), kShininess);
+	float3 Ambient = 0;
+
+	return (Diffuse + Specular + Ambient) * LightIntensity;
+}
+
+float CalcAttenuation(float d, float Start, float End)
+{
+    return saturate((End - d) / (End - Start));
+}
+
+float3 CalcLightPointLightEnergy(LightContext Context, float3 N, float3 V, float3 BaseColor)
+{
+	const float kPi = 3.14159265;
+	const float kShininess = 4.0;
+	const float kEnergyConservation = ( 8.0 + kShininess ) / ( 8.0 * kPi ); 
+
+	float3 LightToPixel = Context.LightWorldPosition - Context.WorldPosition;
+	float Length = length(LightToPixel);
+	float LightEnergy = CalcAttenuation( Length, Context.StartFalloff, Context.EndFalloff ) * Context.Intensity;
+	
+	float3 L = LightToPixel / Length;
+	float3 H = normalize(L + V);
+
+	float NoL = max(dot(N, L), 0.0);
+	float3 R = reflect(-L, N);
+	float VoR = max(dot(V, R), 0.0);
+
+	float3 Diffuse  = Context.Color * rcp(kPi) * NoL * BaseColor;
+	float3 Specular = 0;//kEnergyConservation * pow(max(dot(N, H), 0.0), kShininess);
+
+	return (Diffuse + Specular) * LightEnergy;
 }  
 
 
@@ -70,6 +126,5 @@ float CalcSceneDepth( float DeviceZ )
 {
 	return ProjMatrix[3][2] / (DeviceZ - ProjMatrix[2][2]);
 }
-
 
 #endif

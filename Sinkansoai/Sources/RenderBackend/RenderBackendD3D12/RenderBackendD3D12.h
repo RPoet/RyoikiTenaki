@@ -24,6 +24,7 @@ enum EGraphicsPipeline
 	Basepass,
 	ForwardLighting,
 	DeferredLighting,
+	DeferredLocalLighting,
 	Postprocess,
 	NumPasses = DeferredLighting + 1
 };
@@ -144,6 +145,9 @@ private:
 	uint32 CBVSRVUAVDescriptorSize;
 
 
+	float LastSubmitTime;
+	float CurrentSubmitTime;
+
 public:
 	RRenderBackendD3D12();
 	virtual ~RRenderBackendD3D12() = default;
@@ -155,9 +159,10 @@ public:
 	void Basepass();
 	void RenderForwardLights(RRenderCommandListD3D12& CommandList);
 	void RenderLights(RRenderCommandListD3D12& CommandList);
+	void RenderLocalLights(RRenderCommandListD3D12& CommandList, uint32 NumLocalLight);
 	void Postprocess();
 
-	virtual void FunctionalityTestRender(bool bDeferred) override;
+	virtual void FunctionalityTestRender(bool bDeferred, uint32 TestInput) override;
 
 	ID3D12Device* GetDevice()
 	{

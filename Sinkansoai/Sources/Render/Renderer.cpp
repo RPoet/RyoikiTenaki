@@ -7,13 +7,37 @@
 
 MTransform DirectionalLight{};
 uint32 DebugInput = 0;
+uint32 GNumLights = 1;
 bool GUseDeferredShading = 0;
+bool GInitPointLights = false;
 
+RLightData LightData{};
 
 RRenderer::RRenderer(RScene& Scene)
 	: Scene(Scene)
 {
 	DirectionalLight.Rotation.x = 55.0f;
+
+	if (!GInitPointLights)
+	{
+		GInitPointLights = true;
+
+		for (int32 i = 0; i < 500; ++i)
+		{
+			LightData.PointLights[i].WorldPositionAndIntensity.x = (rand() % 2000) - 1000;
+			LightData.PointLights[i].WorldPositionAndIntensity.y = (rand() % 2000) - 1000;
+			LightData.PointLights[i].WorldPositionAndIntensity.z = (rand() % 2000) - 1000;
+
+			LightData.PointLights[i].WorldPositionAndIntensity.w = (rand() % 200) + 200;
+		}
+
+		for (int32 i = 0; i < 500; ++i)
+		{
+			LightData.PointLights[i].Color.x = (rand() % 256) / 255.0f;
+			LightData.PointLights[i].Color.y = (rand() % 256) / 255.0f;
+			LightData.PointLights[i].Color.z = (rand() % 256) / 255.0f;
+		}
+	}
 }
 
 
@@ -27,6 +51,7 @@ void RRenderer::ResolveViewMatrices()
 
 	ViewMatrices[0].ProjMatrix = DirectX::XMMatrixPerspectiveFovLH(ViewContexts[0].Fov * 3.141592 / 180.0f, AspectRatio, 50000.0f, ViewContexts[0].MinZ);
 	ViewMatrices[0].InvProjMatrix = DirectX::XMMatrixInverse(nullptr, ViewMatrices[0].ProjMatrix);
+
 	ViewMatrices[0].WorldToClip = ViewMatrices[0].WorldToViewMatrix * ViewMatrices[0].ProjMatrix;
 	ViewMatrices[0].DeltaTime = Scene.GetDeltaTime();
 	ViewMatrices[0].WorldTime = Scene.GetWorldTime();
@@ -63,15 +88,52 @@ void RRenderer::ResolveViewMatrices()
 		DebugInput = 5;
 	}
 
+
+	static float KeyTimer = 0;
+	KeyTimer += 0.01f;
+	if (MInput::Get().IsPressed('6') && KeyTimer > 0.1f)
+	{
+		KeyTimer = 0;
+		GNumLights = 0;
+	}
+
+	if (MInput::Get().IsPressed('7') && KeyTimer > 0.1f)
+	{
+		KeyTimer = 0;
+		GNumLights = 150;
+	}
+
+	if (MInput::Get().IsPressed('8') && KeyTimer > 0.1f)
+	{
+		KeyTimer = 0;
+		GNumLights = 300;
+	}
+
+	if (MInput::Get().IsPressed('9') && KeyTimer > 0.1f)
+	{
+		KeyTimer = 0;
+		GNumLights = 500;
+	}
+
 	ViewMatrices[0].DebugValue = DebugInput;
 
-	DirectionalLight.Rotation.y += Scene.GetDeltaTime() * 45;
+	//DirectionalLight.Rotation.y += Scene.GetDeltaTime() * 45;
 
 	auto Direction = DirectionalLight.GetDirection();
 	LightData.DirectionalLight.Direction = float4(Direction.x, Direction.y, Direction.z, 1);
 	LightData.DirectionalLight.Diffuse = float4(1, 1, 1, 1);
 	LightData.DirectionalLight.Specular = float4(1, 1, 1, 1);
 	LightData.DirectionalLight.Ambient = float4(0.2, 0.2, 0.2, 1);
+
+	LightData.NumPointLights = GNumLights;
+	for (int32 i = 0; i < GNumLights; ++i)
+	{
+		LightData.PointLights[i].WorldPositionAndIntensity.y += Scene.GetDeltaTime() * 200;
+		if (LightData.PointLights[i].WorldPositionAndIntensity.y > 1000)
+		{
+			LightData.PointLights[i].WorldPositionAndIntensity.y = -20;
+		}
+	}
 }
 
 void RRenderer::RenderDeferredShading(RRenderCommandList& CommandList)
@@ -85,7 +147,7 @@ void RRenderer::RenderDeferredShading(RRenderCommandList& CommandList)
 	GlobalDynamicBuffer0->CopyData(ViewMatrices[0]);
 	GlobalDynamicBuffer1->CopyData(LightData);
 
-	GBackend->FunctionalityTestRender(true);
+	GBackend->FunctionalityTestRender(true, GNumLights);
 	GBackend->RenderFinish();
 }
 
@@ -100,7 +162,7 @@ void RRenderer::RenderForwardShading(RRenderCommandList& CommandList)
 	GlobalDynamicBuffer0->CopyData(ViewMatrices[0]);
 	GlobalDynamicBuffer1->CopyData(LightData);
 
-	GBackend->FunctionalityTestRender(false);
+	GBackend->FunctionalityTestRender(false, GNumLights);
 	GBackend->RenderFinish();
 }
 
@@ -109,9 +171,11 @@ void DrawViweport_RT(RRenderCommandList& CommandList, RScene& Scene, const RView
 	auto Renderer = new RRenderer(Scene);
 	Renderer->AddView(ViewContext);
 
-
-	if (MInput::Get().IsPressed('K'))
+	static float KeyTimer = 0;
+	KeyTimer += 0.01f;
+	if (MInput::Get().IsPressed('K') && KeyTimer > 0.1f)
 	{
+		KeyTimer = 0;
 		GUseDeferredShading = !GUseDeferredShading;
 	}
 

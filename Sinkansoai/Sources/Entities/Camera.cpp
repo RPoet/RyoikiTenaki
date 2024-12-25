@@ -74,4 +74,6 @@ void MCamera::Tick(float DeltaTime)
 	{
 		this->Transform.Rotation.y += Move * 0.08f;
 	}
+
+	ViewTranslation = float3(Transform.Position.x, Transform.Position.y, Transform.Position.z);
 }

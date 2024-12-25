@@ -24,7 +24,8 @@ struct PSInput
 {
 	float4 Position : SV_POSITION;
 	float2 UV : TEXCOORD;
-	float3 ScreenVector : POSITION;
+	float3 ScreenVector : POSITION0;
+	float3 WorldPosition : POSITION1;
 	float3 Normal : NORMAL;
 	float3 Tangent : TANGENT;
 	float3 Bitangent : BITANGENT;
@@ -42,9 +43,15 @@ PSInput VSMain(float3 Position : POSITION
 	const float3 WorldPosition = Position.xyz;
 
 	PSInput Result;
+	Result.WorldPosition = WorldPosition;
 	Result.Position = mul( WorldToClip, float4(WorldPosition, 1) );
 	Result.UV = UV;
-	Result.ScreenVector = normalize( mul( WorldToViewMatrix, float4(WorldPosition, 1) ) ).xyz;
+	//Result.ScreenVector = normalize( mul( WorldToViewMatrix, float4(WorldPosition, 1) ) ).xyz;
+	
+	float4 ScreenVector = mul( InvProjMatrix, Result.Position );
+	ScreenVector.xyz /= ScreenVector.w;
+	Result.ScreenVector = normalize(ScreenVector.xyz);	
+
 	Result.Normal = normalize(Normal.xyz);
 	Result.Tangent = normalize(Tangent.xyz);
 	Result.Bitangent = normalize(Bitangent.xyz);
@@ -69,8 +76,12 @@ void PSMain(PSInput In
 	const float4 DiffuseColor = MaterialTextures[TexutreBase + 0].Sample(Sampler, In.UV);
 	const float4 Normal = MaterialTextures[TexutreBase + 1].Sample(Sampler, In.UV);
 
-	float3 ViewVector = In.ScreenVector;
+	float DeviceZ = In.Position.z;
+	float SceneDepth = CalcSceneDepth( DeviceZ );
+
+	float3 ViewPosition = ViewTranslation.xyz - In.WorldPosition.xyz;
 	float3 WorldNormal = In.Normal;
+	float3 ViewVector = normalize(ViewPosition);
 	if(dot(Normal, Normal) > 0)
 	{
 		const float3 LocalNormal = Normal.xyz * 2 - 1;
@@ -86,13 +97,27 @@ void PSMain(PSInput In
 
 #if USE_GBUFFER	
 	WorldNormal = normalize( WorldNormal ) * 0.5f + 0.5f;
-
 	Color0 = float4(0, 0, 0, 1);
 	Color1 = float4(DiffuseColor.xyz, 1);
 	Color2 = float4(WorldNormal, 1);
-	Color3 = float4(In.Normal * 0.5f + 0.5f, 1);
+	Color3 = float4(In.WorldPosition, SceneDepth);
 #else
 	float3 Lighting = CalcDirectionalLight( DirectionalLight, WorldNormal.xyz, ViewVector, DiffuseColor.xyz );
+
+	LightContext Context = (LightContext)0;
+	Context.WorldPosition =  In.WorldPosition;
+	Context.Intensity = 10.0f;
+	Context.StartFalloff = 0;
+	
+	for(uint i = 0; i < NumPointLights; ++i)
+	{
+		Context.LightWorldPosition = PointLights[i].WorldPositionAndIntensity.xyz;
+		Context.EndFalloff = PointLights[i].WorldPositionAndIntensity.w;
+		Context.Color = PointLights[i].Color.xyz;
+
+		Lighting += CalcLightPointLightEnergy(Context, WorldNormal, ViewVector, DiffuseColor.xyz);
+	}
+
 	Color0 = float4(Lighting, 1);
 #endif
 }

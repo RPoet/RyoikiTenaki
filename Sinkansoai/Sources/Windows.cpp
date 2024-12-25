@@ -1,6 +1,7 @@
 #include <string>
 #include <iostream>
 #include "Windows.h"
+#include "Timer.h"
 
 IMPLEMENT_MODULE(MWindow)
 
@@ -34,7 +35,9 @@ bool MWindow::Init(const MStartupParams& StartupParams, const String& InClassNam
 	SetWidth(1920);
 	SetHeight(1100);
 
+	WindowName = InAppName;
 	HandleInstance = StartupParams.hInstance;
+	FPS = 144;
 
 	WinClassEx.cbSize = sizeof(WNDCLASSEX);
 	WinClassEx.style = CS_HREDRAW | CS_VREDRAW;
@@ -90,5 +93,13 @@ void MWindow::Teardown()
 
 void MWindow::Update()
 {
-	// nothing to do...
+	static float Timer = 0;
+	Timer += MTimer::Get().GetDelta();
+
+	if (Timer > 0.5f)
+	{
+		Timer = 0;
+		auto NewString = WindowName + String(TEXT(" - ")) + std::to_wstring(FPS) + String(TEXT(" fps"));
+		SetWindowTextW(HandleWindow, NewString.c_str());
+	}
 }

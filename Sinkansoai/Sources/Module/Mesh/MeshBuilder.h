@@ -7,8 +7,6 @@ class MMeshBuilder : public MModuleBase
 	MODULE_CLASS_DECORATOR(MMeshBuilder)
 
 private:
-
-
 public:
 
 	virtual void Init() override;

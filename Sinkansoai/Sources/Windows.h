@@ -18,6 +18,9 @@ private:
 	WNDCLASSEX		WinClassEx;
 	HWND			HandleWindow;
 	int32			Width, Height;
+	float			FPS;
+
+	String			WindowName;
 
 	bool Init(const MStartupParams&, const String&, const String&);
 
@@ -33,6 +36,8 @@ public:
 	int GetHeight() { return  Height; }
 	void SetWidth(int InWidth) { Width = InWidth; }
 	void SetHeight(int InHeight) { Height = InHeight; }
+
+	void SetFrame(float Frame) { FPS = Frame; }
 
 	friend LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 };

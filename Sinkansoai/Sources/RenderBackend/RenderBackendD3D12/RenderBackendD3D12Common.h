@@ -1,5 +1,5 @@
 #pragma once
-#define USE_PIX 1
+#define USE_PIX 0
 
 #include "../../PlatformDefinitions.h"
 #include "../RenderBackend.h"

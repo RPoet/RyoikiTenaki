@@ -74,7 +74,7 @@ public:
 		auto ScaleM = DirectX::XMMatrixScaling(Scale.x, Scale.y, Scale.z);
 		auto TranslationM = DirectX::XMMatrixTranslation(Position.x, Position.y, Position.z);
 
-		LocalToWorld = TranslationM * ScaleM * RotationM ;
+		LocalToWorld = TranslationM * RotationM * ScaleM;
 
 		return LocalToWorld;
 	}
