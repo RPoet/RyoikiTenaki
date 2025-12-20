@@ -1,5 +1,6 @@
 #include "Camera.h"
 #include "../Input.h"
+#include <DirectXMath.h>
 
 void MCamera::Register()
 {
@@ -16,37 +17,52 @@ void MCamera::Tick(float DeltaTime)
 	const float3 FocusPoint = float3(0, 0, 0);
 
 	const float Move = DeltaTime * 500;
+	const DirectX::XMMATRIX LocalToWorld = this->Transform.ToMatrix();
+
+	const DirectX::XMVECTOR Forward = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.f, 0.f, 1.f, 0.f), LocalToWorld));
+	const DirectX::XMVECTOR Right = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(1.f, 0.f, 0.f, 0.f), LocalToWorld));
+	const DirectX::XMVECTOR Up = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.f, 1.f, 0.f, 0.f), LocalToWorld));
+
+	DirectX::XMVECTOR Movement = DirectX::XMVectorZero();
+
 	// Keyboard Input
 	if (MInput::Get().IsPressed('W'))
 	{
-		this->Transform.Position.z += Move;
+		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Forward, Move));
 	}
 
 	if (MInput::Get().IsPressed('S'))
 	{
-		this->Transform.Position.z -= Move;
+		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Forward, -Move));
 	}
 
 	if (MInput::Get().IsPressed('A'))
 	{
-		this->Transform.Position.x -= Move;
+		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Right, -Move));
 	}
 
 	if (MInput::Get().IsPressed('D'))
 	{
-		this->Transform.Position.x += Move;
+		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Right, Move));
 	}
 
 	if (MInput::Get().IsPressed('U'))
 	{
-		this->Transform.Position.y += Move;
+		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Up, Move));
 	}
 
 	if (MInput::Get().IsPressed('I'))
 	{
-		this->Transform.Position.y -= Move;
+		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Up, -Move));
 	}
 
+	if (!DirectX::XMVector3Equal(Movement, DirectX::XMVectorZero()))
+	{
+		DirectX::XMVECTOR Position = DirectX::XMVectorSet(this->Transform.Position.x, this->Transform.Position.y, this->Transform.Position.z, 1.f);
+		Position = DirectX::XMVectorAdd(Position, Movement);
+		DirectX::XMStoreFloat4(&this->Transform.Position, Position);
+		this->Transform.Position.w = 1.f;
+	}
 
 	if (MInput::Get().IsPressed('Z'))
 	{
