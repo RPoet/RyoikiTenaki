@@ -34,10 +34,9 @@ public:
 	RRenderBackend() = default;
 	virtual ~RRenderBackend() = default;
 
-
 	virtual void Init() {};
 	virtual void Teardown() {};
-	virtual void FunctionalityTestRender() {};
+	virtual void FunctionalityTestRender(bool bDeferred, uint32 TestInput) {};
 
 	virtual void RenderBegin() {};
 	virtual void RenderFinish() {};

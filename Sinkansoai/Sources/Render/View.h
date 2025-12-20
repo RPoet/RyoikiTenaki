@@ -38,11 +38,16 @@ __declspec(align(16u)) struct RDirectionalLightData
 	float4 Specular;
 };
 
+__declspec(align(16u)) struct RPoint
+{
+	float4 WorldPositionAndIntensity;
+	float4 Color;
+};
 
 __declspec(align(16u)) struct RLightData
 {
 public:
 	RDirectionalLightData DirectionalLight;
-
-
+	RPoint PointLights[500];
+	uint32 NumPointLights;
 };

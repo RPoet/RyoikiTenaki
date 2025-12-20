@@ -57,6 +57,8 @@ public:
 struct RMesh
 {
 public:
+	uint32 NumVertices = 0;
+
 	RVertexBuffer* PositionVertexBuffer;
 	RVertexBuffer* UVVertexBuffer;
 	RVertexBuffer* NormalVertexBuffer;
@@ -74,6 +76,8 @@ public:
 		PlatformFunc(PositionVertexBuffer, UVVertexBuffer, NormalVertexBuffer, TangentVertexBuffer, BitangentVertexBuffer, IndexBuffer);
 
 		assert((PositionVertexBuffer || UVVertexBuffer || NormalVertexBuffer || TangentVertexBuffer) && "Vertex buffers not initialized");
+		NumVertices = Mesh.RenderData.Positions.size();
+
 		PositionVertexBuffer->SetRawVertexBuffer(Mesh.RenderData.Positions);
 		PositionVertexBuffer->AllocateResource();
 

@@ -16,7 +16,6 @@ private:
 	vector< RViewContext > ViewContexts{};
 	vector< RViewMatrices > ViewMatrices{};
 	
-	RLightData LightData{};
 
 public:
 	RRenderer(RScene& Scene);

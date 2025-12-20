@@ -78,4 +78,6 @@ void MCamera::Tick(float DeltaTime)
 		DirectX::XMStoreFloat4(&this->Transform.Position, Position);
 		this->Transform.Position.w = 1.f;
 	}
+
+	ViewTranslation = float3(Transform.Position.x, Transform.Position.y, Transform.Position.z);
 }

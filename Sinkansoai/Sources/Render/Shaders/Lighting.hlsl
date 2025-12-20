@@ -1,51 +1,63 @@
+#ifndef LOCAL_LIGHT
 #include "ScreenPass.hlsl"
+#endif
+#include "View.hlsl"
 #include "SceneTextures.hlsl"
 
+cbuffer LocalLightData : register(b0, space3)
+{
+	uint LightIndex;
+};
+
+#if LOCAL_LIGHT
+
+struct PSInput
+{
+	float4 Position : SV_POSITION;
+	uint InstanceId : SV_INSTANCEID;
+};
+
+PSInput VSMain(float3 Position : POSITION
+			 , uint InstanceId : SV_INSTANCEID)
+{
+	const float Radius = PointLights[InstanceId].WorldPositionAndIntensity.w;	
+	const float3 WorldPosition = Position.xyz * Radius + PointLights[InstanceId].WorldPositionAndIntensity.xyz;
+
+	PSInput Result;
+	Result.Position = mul( WorldToClip, float4(WorldPosition, 1) );
+	Result.InstanceId = InstanceId;
+	return Result;
+}
+#endif
+
 void PSMain( in PSInput In,
-            out float4 SceneColor  : SV_TARGET0,
-            out float4 Debug : SV_TARGET1 )
+			out float4 SceneColor  : SV_TARGET0 )
 { 
-    float2 SVPosition = In.Position.xy;
-    float2 BufferUV = (In.Position.xy + 0.5f) * rcp(ViewRect);
-    uint2 PixelPosition = SVPosition.xy;
+	float3 SVPosition = In.Position.xyz;
+	float2 BufferUV = (In.Position.xy + 0.5f) * rcp(ViewRect);
+	uint2 PixelPosition = SVPosition.xy;
 
-    float DeviceZ = SceneDepthTexture[PixelPosition];
-    float SceneDepth = CalcSceneDepth( DeviceZ );
-    float4 BaseColor = BaseColorTexture[PixelPosition];
+	float4 BaseColor = BaseColorTexture[PixelPosition];
+	float4 GBuffer0 = WorldNormalTexture[PixelPosition];
+	float4 WorldPosition = MaterialTexture[PixelPosition].xyzw;
+	float3 ViewPosition = ViewTranslation.xyz - WorldPosition.xyz;
 
-    float4 GBuffer0 = WorldNormalTexture[PixelPosition];
-    float3 WorldNormal = normalize( GBuffer0.xyz * 2.0f - 1.0f );
+	float3 WorldNormal = normalize( GBuffer0.xyz * 2.0f - 1.0f );
 
-    float4 GBuffer1 = MaterialTexture[PixelPosition];
-    float3 VertexWorldNormal = normalize( GBuffer1.xyz * 2.0f - 1.0f );
+#if LOCAL_LIGHT
+	const float Radius = PointLights[In.InstanceId].WorldPositionAndIntensity.w;	
 
-    float3 ViewVector = normalize(In.ScreenVector.xyz);
-    float3 ViewPosition = ViewVector * SceneDepth;
-    float3 WorldPosition = mul( ViewToWorldMatrix, float4( ViewPosition, 1 ) ).xyz;
+	LightContext Context = (LightContext)0;
+	Context.LightWorldPosition = PointLights[In.InstanceId].WorldPositionAndIntensity.xyz;
+	Context.WorldPosition =  WorldPosition.xyz;
+	Context.Color = PointLights[In.InstanceId].Color.xyz;
+	Context.Intensity = 10.0f;
+	Context.StartFalloff = 0;
+	Context.EndFalloff = Radius;
+	float3 Lighting = CalcLightPointLightEnergy(Context, WorldNormal, normalize(ViewPosition), BaseColor.xyz);
 
-    float3 Color = CalcDirectionalLight( DirectionalLight, VertexWorldNormal.xyz, ViewVector, BaseColor.xyz );
-  
-    SceneColor = 0;
-    Debug = 0;
-      
-    if( DebugInput == 0 )
-    {
-        SceneColor = float4( Color, 1 );
-        Debug = float4(In.ScreenVector.xyz * SceneDepth, SceneDepth);
-        return;
-    }
-    
-    if( DebugInput == 1 )
-    {
-        SceneColor =float4( GBuffer1.xyz, 1 );
-        Debug = float4( SceneDepth, SceneDepth, SceneDepth, SceneDepth );
-        return;
-    }
-    
-    if( DebugInput == 2 )
-    {
-        SceneColor = float4( GBuffer0.xyz, 1 );
-        Debug = float4( SceneDepth, SceneDepth, SceneDepth, SceneDepth );
-        return;
-    }
+#else
+	float3 Lighting = CalcDirectionalLight( DirectionalLight, WorldNormal, normalize(ViewPosition), BaseColor.xyz ); 
+#endif
+	SceneColor = float4( Lighting, 1);
 }
