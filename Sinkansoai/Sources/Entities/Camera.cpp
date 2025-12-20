@@ -17,11 +17,26 @@ void MCamera::Tick(float DeltaTime)
 	const float3 FocusPoint = float3(0, 0, 0);
 
 	const float Move = DeltaTime * 500;
-	const DirectX::XMMATRIX LocalToWorld = this->Transform.ToMatrix();
 
-	const DirectX::XMVECTOR Forward = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.f, 0.f, 1.f, 0.f), LocalToWorld));
-	const DirectX::XMVECTOR Right = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(1.f, 0.f, 0.f, 0.f), LocalToWorld));
-	const DirectX::XMVECTOR Up = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.f, 1.f, 0.f, 0.f), LocalToWorld));
+	if (MInput::Get().IsPressed('Z'))
+	{
+		this->Transform.Rotation.y -= Move * 0.08f;
+	}
+
+
+	if (MInput::Get().IsPressed('X'))
+	{
+		this->Transform.Rotation.y += Move * 0.08f;
+	}
+
+	const DirectX::XMMATRIX RotationOnly = DirectX::XMMatrixRotationRollPitchYaw(
+		DirectX::XMConvertToRadians(this->Transform.Rotation.x),
+		DirectX::XMConvertToRadians(this->Transform.Rotation.y),
+		DirectX::XMConvertToRadians(this->Transform.Rotation.z));
+
+	const DirectX::XMVECTOR Forward = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.f, 0.f, 1.f, 0.f), RotationOnly));
+	const DirectX::XMVECTOR Right = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(1.f, 0.f, 0.f, 0.f), RotationOnly));
+	const DirectX::XMVECTOR Up = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.f, 1.f, 0.f, 0.f), RotationOnly));
 
 	DirectX::XMVECTOR Movement = DirectX::XMVectorZero();
 
@@ -63,17 +78,4 @@ void MCamera::Tick(float DeltaTime)
 		DirectX::XMStoreFloat4(&this->Transform.Position, Position);
 		this->Transform.Position.w = 1.f;
 	}
-
-	if (MInput::Get().IsPressed('Z'))
-	{
-		this->Transform.Rotation.y -= Move * 0.08f;
-	}
-
-
-	if (MInput::Get().IsPressed('X'))
-	{
-		this->Transform.Rotation.y += Move * 0.08f;
-	}
-
-	ViewTranslation = float3(Transform.Position.x, Transform.Position.y, Transform.Position.z);
 }
