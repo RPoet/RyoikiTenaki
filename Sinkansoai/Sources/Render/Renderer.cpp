@@ -147,7 +147,7 @@ void RRenderer::RenderDeferredShading(RGraphicsCommandList& CommandList)
 	GlobalDynamicBuffer0->CopyData(ViewMatrices[0]);
 	GlobalDynamicBuffer1->CopyData(LightData);
 
-	GBackend->FunctionalityTestRender(true, GNumLights);
+	RenderFrame(*GBackend, CommandList, true, GNumLights);
 	GBackend->RenderFinish();
 }
 
@@ -162,8 +162,378 @@ void RRenderer::RenderForwardShading(RGraphicsCommandList& CommandList)
 	GlobalDynamicBuffer0->CopyData(ViewMatrices[0]);
 	GlobalDynamicBuffer1->CopyData(LightData);
 
-	GBackend->FunctionalityTestRender(false, GNumLights);
+	RenderFrame(*GBackend, CommandList, false, GNumLights);
 	GBackend->RenderFinish();
+}
+
+void RRenderer::Prepass(RRenderBackend& Backend, RGraphicsCommandList& CommandList)
+{
+	CommandList.BeginEvent(0xFF, TEXT("Prepass"));
+
+	const auto DSVHandle = Backend.GetSceneDepthHandle();
+	CommandList.ClearDepthStencilView(DSVHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 0, 0, 0, nullptr);
+	CommandList.OMSetRenderTargets(0, nullptr, false, &DSVHandle);
+
+	auto* Pipeline = Backend.GetGraphicsPipeline(EGraphicsPipeline::Prepass);
+	if (Pipeline)
+	{
+		CommandList.SetGraphicsPipeline(*Pipeline);
+	}
+
+	ID3D12DescriptorHeap* Heaps[] = { Backend.GetCBVSRVHeap() };
+	CommandList.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList.SetGraphicsRootDescriptorTable(0, Backend.GetDescriptorHandle(EDescriptorHeapAddressSpace::ConstantBufferView));
+	CommandList.SetGraphicsRootDescriptorTable(1, Backend.GetDescriptorHandle(EDescriptorHeapAddressSpace::ShaderResourceView));
+
+	auto* Mesh = Backend.GetRenderMesh();
+	if (Mesh)
+	{
+		CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		CommandList.SetVertexBuffer(0, Mesh->PositionVertexBuffer);
+		CommandList.SetVertexBuffer(1, Mesh->UVVertexBuffer);
+		CommandList.SetIndexBuffer(Mesh->IndexBuffer);
+
+		for (int32 iSection = 0; iSection < Mesh->Sections.size(); ++iSection)
+		{
+			const auto& Section = Mesh->Sections[iSection];
+			const auto& Color = Mesh->Materials[Section.MaterialId].Colors.size() > 0 ? Mesh->Materials[Section.MaterialId].Colors[0] : float3(1, 1, 1);
+			const int32 NumIndices = Section.End - Section.Start;
+			const int32 StartIndex = Section.Start;
+
+			CommandList.SetGraphicsRoot32BitConstants(3, sizeof(Color) / 4, &Color, 0);
+			CommandList.SetGraphicsRoot32BitConstant(4, Section.MaterialId, 0);
+			CommandList.DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
+		}
+	}
+
+	CommandList.EndEvent();
+}
+
+void RRenderer::Basepass(RRenderBackend& Backend, RGraphicsCommandList& CommandList)
+{
+	CommandList.BeginEvent(0xFFFF, TEXT("Basepass"));
+
+	const uint32 SceneRTVCount = Backend.GetSceneRTVCount();
+	D3D12_CPU_DESCRIPTOR_HANDLE RTVHandles[8] = {};
+	for (uint32 i = 0; i < SceneRTVCount && i < _countof(RTVHandles); ++i)
+	{
+		RTVHandles[i] = Backend.GetSceneRTVHandle(i);
+	}
+
+	const auto DSVHandle = Backend.GetSceneDepthHandle();
+
+	const float ClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	for (uint32 i = 0; i < SceneRTVCount && i < _countof(RTVHandles); ++i)
+	{
+		CommandList.ClearRenderTargetView(RTVHandles[i], ClearColor, 0, nullptr);
+	}
+
+	CommandList.OMSetRenderTargets(SceneRTVCount, RTVHandles, false, &DSVHandle);
+
+	auto* Pipeline = Backend.GetGraphicsPipeline(EGraphicsPipeline::Basepass);
+	if (Pipeline)
+	{
+		CommandList.SetGraphicsPipeline(*Pipeline);
+	}
+
+	ID3D12DescriptorHeap* Heaps[] = { Backend.GetCBVSRVHeap() };
+	CommandList.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList.SetGraphicsRootDescriptorTable(0, Backend.GetDescriptorHandle(EDescriptorHeapAddressSpace::ConstantBufferView));
+	CommandList.SetGraphicsRootDescriptorTable(1, Backend.GetDescriptorHandle(EDescriptorHeapAddressSpace::ShaderResourceView));
+
+	auto* Mesh = Backend.GetRenderMesh();
+	if (Mesh)
+	{
+		CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		CommandList.SetVertexBuffer(0, Mesh->PositionVertexBuffer);
+		CommandList.SetVertexBuffer(1, Mesh->UVVertexBuffer);
+		CommandList.SetVertexBuffer(2, Mesh->NormalVertexBuffer);
+		CommandList.SetVertexBuffer(3, Mesh->TangentVertexBuffer);
+		CommandList.SetVertexBuffer(4, Mesh->BitangentVertexBuffer);
+		CommandList.SetIndexBuffer(Mesh->IndexBuffer);
+
+		for (int32 iSection = 0; iSection < Mesh->Sections.size(); ++iSection)
+		{
+			const auto& Section = Mesh->Sections[iSection];
+			const auto& Color = Mesh->Materials[Section.MaterialId].Colors.size() > 0 ? Mesh->Materials[Section.MaterialId].Colors[0] : float3(1, 1, 1);
+			const int32 NumIndices = Section.End - Section.Start;
+			const int32 StartIndex = Section.Start;
+
+			CommandList.SetGraphicsRoot32BitConstants(3, sizeof(Color) / 4, &Color, 0);
+			CommandList.SetGraphicsRoot32BitConstant(4, Section.MaterialId, 0);
+			CommandList.DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
+		}
+	}
+
+	CommandList.EndEvent();
+}
+
+void RRenderer::RenderForwardLights(RRenderBackend& Backend, RGraphicsCommandList& CommandList)
+{
+	CommandList.BeginEvent(0xFFFF, TEXT("Render Forward Lights"));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE RTVHandles[] =
+	{
+		Backend.GetSceneRTVHandle(0),
+	};
+
+	const auto DSVHandle = Backend.GetSceneDepthHandle();
+
+	const float ClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	CommandList.ClearRenderTargetView(RTVHandles[0], ClearColor, 0, nullptr);
+
+	CommandList.OMSetRenderTargets(_countof(RTVHandles), RTVHandles, false, &DSVHandle);
+
+	auto* Pipeline = Backend.GetGraphicsPipeline(EGraphicsPipeline::ForwardLighting);
+	if (Pipeline)
+	{
+		CommandList.SetGraphicsPipeline(*Pipeline);
+	}
+
+	ID3D12DescriptorHeap* Heaps[] = { Backend.GetCBVSRVHeap() };
+	CommandList.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList.SetGraphicsRootDescriptorTable(0, Backend.GetDescriptorHandle(EDescriptorHeapAddressSpace::ConstantBufferView));
+	CommandList.SetGraphicsRootDescriptorTable(1, Backend.GetDescriptorHandle(EDescriptorHeapAddressSpace::ShaderResourceView));
+
+	auto* Mesh = Backend.GetRenderMesh();
+	if (Mesh)
+	{
+		CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		CommandList.SetVertexBuffer(0, Mesh->PositionVertexBuffer);
+		CommandList.SetVertexBuffer(1, Mesh->UVVertexBuffer);
+		CommandList.SetVertexBuffer(2, Mesh->NormalVertexBuffer);
+		CommandList.SetVertexBuffer(3, Mesh->TangentVertexBuffer);
+		CommandList.SetVertexBuffer(4, Mesh->BitangentVertexBuffer);
+		CommandList.SetIndexBuffer(Mesh->IndexBuffer);
+
+		for (int32 iSection = 0; iSection < Mesh->Sections.size(); ++iSection)
+		{
+			const auto& Section = Mesh->Sections[iSection];
+			const auto& Color = Mesh->Materials[Section.MaterialId].Colors.size() > 0 ? Mesh->Materials[Section.MaterialId].Colors[0] : float3(1, 1, 1);
+			const int32 NumIndices = Section.End - Section.Start;
+			const int32 StartIndex = Section.Start;
+
+			CommandList.SetGraphicsRoot32BitConstants(3, sizeof(Color) / 4, &Color, 0);
+			CommandList.SetGraphicsRoot32BitConstant(4, Section.MaterialId, 0);
+			CommandList.DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
+		}
+	}
+
+	CommandList.EndEvent();
+}
+
+void RRenderer::RenderLights(RRenderBackend& Backend, RGraphicsCommandList& CommandList)
+{
+	CommandList.BeginEvent(0xFFFF, TEXT("RenderLights"));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE RTVHandles[] =
+	{
+		Backend.GetSceneRTVHandle(0),
+		Backend.GetSceneRTVHandle(4),
+	};
+
+	const float ClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	for (auto& RTV : RTVHandles)
+	{
+		CommandList.ClearRenderTargetView(RTV, ClearColor, 0, nullptr);
+	}
+
+	CommandList.OMSetRenderTargets(_countof(RTVHandles), RTVHandles, false, nullptr);
+
+	auto* Pipeline = Backend.GetGraphicsPipeline(EGraphicsPipeline::DeferredLighting);
+	if (Pipeline)
+	{
+		CommandList.SetGraphicsPipeline(*Pipeline);
+	}
+
+	ID3D12DescriptorHeap* Heaps[] = { Backend.GetCBVSRVHeap() };
+	CommandList.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList.SetGraphicsRootDescriptorTable(0, Backend.GetDescriptorHandle(EDescriptorHeapAddressSpace::ConstantBufferView));
+	CommandList.SetGraphicsRootDescriptorTable(1, Backend.GetSceneTextureGPUHandle());
+
+	CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	CommandList.DrawInstanced(3, 1, 0, 0);
+
+	CommandList.EndEvent();
+}
+
+void RRenderer::RenderLocalLights(RRenderBackend& Backend, RGraphicsCommandList& CommandList, uint32 NumLocalLight)
+{
+	CommandList.BeginEvent(0xFFFF, TEXT("RenderLocalLights"));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE RTVHandles[] =
+	{
+		Backend.GetSceneRTVHandle(0),
+		Backend.GetSceneRTVHandle(4),
+	};
+
+	const auto DSVHandle = Backend.GetSceneDepthHandle();
+
+	CommandList.OMSetRenderTargets(_countof(RTVHandles), RTVHandles, false, &DSVHandle);
+
+	auto* Pipeline = Backend.GetGraphicsPipeline(EGraphicsPipeline::DeferredLocalLighting);
+	if (Pipeline)
+	{
+		CommandList.SetGraphicsPipeline(*Pipeline);
+	}
+
+	ID3D12DescriptorHeap* Heaps[] = { Backend.GetCBVSRVHeap() };
+	CommandList.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList.SetGraphicsRootDescriptorTable(0, Backend.GetDescriptorHandle(EDescriptorHeapAddressSpace::ConstantBufferView));
+	CommandList.SetGraphicsRootDescriptorTable(1, Backend.GetSceneTextureGPUHandle());
+
+	auto* Mesh = Backend.GetLightVolumeMesh();
+	if (Mesh)
+	{
+		CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		CommandList.SetVertexBuffer(0, Mesh->PositionVertexBuffer);
+		CommandList.DrawInstanced(Mesh->NumVertices, NumLocalLight, 0, 0);
+	}
+
+	CommandList.EndEvent();
+}
+
+void RRenderer::Postprocess(RRenderBackend& Backend, RGraphicsCommandList& CommandList)
+{
+	CommandList.BeginEvent(0xFFFF, TEXT("Postprocess"));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE RTVHandles[] =
+	{
+		Backend.GetBackBufferRTVHandle(),
+	};
+
+	const float ClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	CommandList.ClearRenderTargetView(RTVHandles[0], ClearColor, 0, nullptr);
+	CommandList.OMSetRenderTargets(1, RTVHandles, false, nullptr);
+
+	auto* Pipeline = Backend.GetGraphicsPipeline(EGraphicsPipeline::Postprocess);
+	if (Pipeline)
+	{
+		CommandList.SetGraphicsPipeline(*Pipeline);
+	}
+
+	ID3D12DescriptorHeap* Heaps[] = { Backend.GetCBVSRVHeap() };
+	CommandList.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList.SetGraphicsRootDescriptorTable(0, Backend.GetDescriptorHandle(EDescriptorHeapAddressSpace::ConstantBufferView));
+	CommandList.SetGraphicsRootDescriptorTable(1, Backend.GetSceneTextureGPUHandle());
+
+	CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	CommandList.DrawInstanced(3, 1, 0, 0);
+
+	CommandList.EndEvent();
+}
+
+void RRenderer::RenderFrame(RRenderBackend& Backend, RGraphicsCommandList& CommandList, bool bDeferred, uint32 NumLocalLights)
+{
+	CommandList.BeginEvent(0xFFFFFFFF, TEXT("RenderFrame"));
+
+	{
+		ID3D12Resource* SceneColor = Backend.GetSceneTextureResource(ESceneTexture::SceneColor);
+		ID3D12Resource* BaseColor = Backend.GetSceneTextureResource(ESceneTexture::BaseColor);
+		ID3D12Resource* WorldNormal = Backend.GetSceneTextureResource(ESceneTexture::WorldNormal);
+		ID3D12Resource* Material = Backend.GetSceneTextureResource(ESceneTexture::Material);
+		ID3D12Resource* SceneDepth = Backend.GetSceneTextureResource(ESceneTexture::SceneDepth);
+
+		D3D12_RESOURCE_BARRIER Barriers[] =
+		{
+			MakeTransitionBarrier(SceneColor, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			MakeTransitionBarrier(BaseColor, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			MakeTransitionBarrier(WorldNormal, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			MakeTransitionBarrier(Material, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			MakeTransitionBarrier(SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE)
+		};
+		CommandList.ResourceBarrier(_countof(Barriers), Barriers);
+	}
+
+	const D3D12_VIEWPORT* Viewport = Backend.GetViewport();
+	if (Viewport)
+	{
+		CommandList.SetViewports(1, Viewport);
+	}
+	const D3D12_RECT* Scissor = Backend.GetScissorRect();
+	if (Scissor)
+	{
+		CommandList.SetScissorRects(1, Scissor);
+	}
+
+	Prepass(Backend, CommandList);
+
+	{
+		ID3D12Resource* SceneDepth = Backend.GetSceneTextureResource(ESceneTexture::SceneDepth);
+		D3D12_RESOURCE_BARRIER Barriers[] =
+		{
+			MakeTransitionBarrier(SceneDepth, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_READ),
+		};
+		CommandList.ResourceBarrier(_countof(Barriers), Barriers);
+	}
+
+	if (bDeferred)
+	{
+		Basepass(Backend, CommandList);
+
+		{
+			ID3D12Resource* BaseColor = Backend.GetSceneTextureResource(ESceneTexture::BaseColor);
+			ID3D12Resource* WorldNormal = Backend.GetSceneTextureResource(ESceneTexture::WorldNormal);
+			ID3D12Resource* Material = Backend.GetSceneTextureResource(ESceneTexture::Material);
+			ID3D12Resource* BackBuffer = Backend.GetBackBufferResource();
+
+			D3D12_RESOURCE_BARRIER Barriers[] =
+			{
+				MakeTransitionBarrier(BaseColor, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				MakeTransitionBarrier(WorldNormal, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				MakeTransitionBarrier(Material, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				MakeTransitionBarrier(BackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			};
+			CommandList.ResourceBarrier(_countof(Barriers), Barriers);
+		}
+
+		RenderLights(Backend, CommandList);
+		RenderLocalLights(Backend, CommandList, NumLocalLights);
+
+		{
+			ID3D12Resource* SceneColor = Backend.GetSceneTextureResource(ESceneTexture::SceneColor);
+			D3D12_RESOURCE_BARRIER Barriers[] =
+			{
+				MakeTransitionBarrier(SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+			};
+			CommandList.ResourceBarrier(_countof(Barriers), Barriers);
+		}
+	}
+	else
+	{
+		RenderForwardLights(Backend, CommandList);
+
+		{
+			ID3D12Resource* SceneColor = Backend.GetSceneTextureResource(ESceneTexture::SceneColor);
+			ID3D12Resource* BaseColor = Backend.GetSceneTextureResource(ESceneTexture::BaseColor);
+			ID3D12Resource* WorldNormal = Backend.GetSceneTextureResource(ESceneTexture::WorldNormal);
+			ID3D12Resource* Material = Backend.GetSceneTextureResource(ESceneTexture::Material);
+			ID3D12Resource* BackBuffer = Backend.GetBackBufferResource();
+
+			D3D12_RESOURCE_BARRIER Barriers[] =
+			{
+				MakeTransitionBarrier(SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				MakeTransitionBarrier(BaseColor, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				MakeTransitionBarrier(WorldNormal, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				MakeTransitionBarrier(Material, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				MakeTransitionBarrier(BackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			};
+			CommandList.ResourceBarrier(_countof(Barriers), Barriers);
+		}
+	}
+
+	Postprocess(Backend, CommandList);
+
+	{
+		ID3D12Resource* BackBuffer = Backend.GetBackBufferResource();
+		D3D12_RESOURCE_BARRIER Barriers[] =
+		{
+			MakeTransitionBarrier(BackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT),
+		};
+		CommandList.ResourceBarrier(_countof(Barriers), Barriers);
+	}
+
+	CommandList.EndEvent();
 }
 
 void DrawViweport_RT(RGraphicsCommandList& CommandList, RScene& Scene, const RViewContext& ViewContext)

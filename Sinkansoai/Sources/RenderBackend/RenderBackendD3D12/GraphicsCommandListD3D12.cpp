@@ -133,15 +133,15 @@ void RGraphicsCommandListD3D12::DrawInstanced(uint32 VertexCountPerInstance, uin
 
 void RGraphicsCommandListD3D12::CopyTexture(void* pData, ID3D12Resource* Dest, ID3D12Resource* UploadHeap, uint32 TextureWidth, uint32 Height, uint32 PixelSizeInBytes)
 {
-\tD3D12_SUBRESOURCE_DATA TextureData = {};
-\tTextureData.pData = pData;
-\tTextureData.RowPitch = TextureWidth * PixelSizeInBytes;
-\tTextureData.SlicePitch = TextureData.RowPitch * Height;
+	D3D12_SUBRESOURCE_DATA TextureData = {};
+	TextureData.pData = pData;
+	TextureData.RowPitch = TextureWidth * PixelSizeInBytes;
+	TextureData.SlicePitch = TextureData.RowPitch * Height;
 
-\tUpdateSubresources(CommandList, Dest, UploadHeap, 0, 0, 1, &TextureData);
+	UpdateSubresources(CommandList, Dest, UploadHeap, 0, 0, 1, &TextureData);
 
-\tauto Barrier = CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-\tCommandList->ResourceBarrier(1, &Barrier);
+	auto Barrier = CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	CommandList->ResourceBarrier(1, &Barrier);
 }
 
 void RGraphicsCommandListD3D12::BeginEvent(UINT64 Color, const wchar_t* Name)

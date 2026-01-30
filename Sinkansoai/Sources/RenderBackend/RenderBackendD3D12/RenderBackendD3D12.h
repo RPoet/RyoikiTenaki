@@ -8,6 +8,7 @@
 #include "CopyCommandListD3D12.h"
 #include "DynamicBufferD3D12.h"
 #include "ResourceBufferD3D12.h"
+#include "../../Engine/Mesh.h"
 
 #include "TextureD3D12.h"
 
@@ -18,27 +19,6 @@
 using namespace DirectX;
 
 constexpr static int32 NumBackBuffers = 2;
-
-
-enum EGraphicsPipeline
-{
-	Prepass,
-	Basepass,
-	ForwardLighting,
-	DeferredLighting,
-	DeferredLocalLighting,
-	Postprocess,
-	NumPasses = DeferredLighting + 1
-};
-
-enum EDescriptorHeapAddressSpace
-{
-	ConstantBufferView  = 0,
-	ShaderResourceView  = 1,
-	UnorderedAccessView = 2,
-
-	Num = UnorderedAccessView + 1
-};
 
 struct RSceneTextures
 {
@@ -116,6 +96,14 @@ private:
 	RCopyCommandListD3D12 CopyCommandList;
 	TRefCountPtr<ID3D12CommandQueue> CommandQueue;
 
+	RMesh RenderMesh;
+	RMesh LightVolumeMesh;
+	SharedPtr<RTexture2DD3D12> DefaultTexture;
+	SharedPtr<RTexture2DD3D12> DefaultBlackTexture;
+	SharedPtr<RTexture2DD3D12> DefaultWhiteTexture;
+
+	RSceneTextures SceneTextures;
+
 	vector< RGraphicsPipeline > GraphicsPipelines;
 	// Synchronization objects.
 	uint32 FrameIndex;
@@ -141,8 +129,8 @@ private:
 	TRefCountPtr<RDescriptorHeap> RTVHeap;
 	TRefCountPtr<RDescriptorHeap> DSVHeap;
 	TRefCountPtr<RDescriptorHeap> CBVSRVHeap;
-	D3D12_GPU_DESCRIPTOR_HANDLE AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::Num]{};
-	uint32 NumRegisteredHeaps[EDescriptorHeapAddressSpace::Num]{};
+	D3D12_GPU_DESCRIPTOR_HANDLE AddressCacheForDescriptorHeapStart[ToDescriptorIndex(EDescriptorHeapAddressSpace::Num)]{};
+	uint32 NumRegisteredHeaps[ToDescriptorIndex(EDescriptorHeapAddressSpace::Num)]{};
 
 	uint32 RTVDescriptorSize;
 	uint32 DSVDescriptorSize;
@@ -158,15 +146,6 @@ public:
 
 	virtual void Init() override;
 	virtual void Teardown() override;
-
-	void Prepass();
-	void Basepass();
-	void RenderForwardLights(RGraphicsCommandListD3D12& CommandList);
-	void RenderLights(RGraphicsCommandListD3D12& CommandList);
-	void RenderLocalLights(RGraphicsCommandListD3D12& CommandList, uint32 NumLocalLight);
-	void Postprocess();
-
-	virtual void FunctionalityTestRender(bool bDeferred, uint32 TestInput) override;
 
 	ID3D12Device* GetDevice()
 	{
@@ -187,6 +166,25 @@ public:
 	{
 		return CopyCommandList;
 	}
+	RMesh* GetRenderMesh() override;
+	RMesh* GetLightVolumeMesh() override;
+
+	uint32 GetSceneRTVCount() const override;
+	D3D12_CPU_DESCRIPTOR_HANDLE GetSceneRTVHandle(uint32 Index) override;
+	D3D12_CPU_DESCRIPTOR_HANDLE GetSceneDepthHandle() override;
+	D3D12_GPU_DESCRIPTOR_HANDLE GetSceneTextureGPUHandle() override;
+
+	ID3D12DescriptorHeap* GetCBVSRVHeap() override;
+	D3D12_GPU_DESCRIPTOR_HANDLE GetDescriptorHandle(EDescriptorHeapAddressSpace AddressSpace) override;
+
+	const D3D12_VIEWPORT* GetViewport() override;
+	const D3D12_RECT* GetScissorRect() override;
+
+	RGraphicsPipeline* GetGraphicsPipeline(EGraphicsPipeline Pipeline) override;
+	ID3D12Resource* GetSceneTextureResource(ESceneTexture Texture) override;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferRTVHandle() override;
+	ID3D12Resource* GetBackBufferResource() override;
 
 	void Execute();
 	void WaitForPreviousFence();
