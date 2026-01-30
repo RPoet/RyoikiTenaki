@@ -318,7 +318,7 @@ void RTexture2DD3D12::StreamTexture(void* pData)
 {
 	const UINT64 UploadBufferSize = GetRequiredIntermediateSize(UnderlyingResource.Get(), 0, 1);
 	auto&& UploadHeap = Backend.CreateUploadHeap(UploadBufferSize);
-	Backend.GetMainCommandList().CopyTexture(pData, UnderlyingResource.Get(), UploadHeap.Get(), Width, Height, PixelSizeInBytes);
+	Backend.GetMainGraphicsCommandList().CopyTexture(pData, UnderlyingResource.Get(), UploadHeap.Get(), Width, Height, PixelSizeInBytes);
 }
 
 

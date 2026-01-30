@@ -6,7 +6,6 @@
 #include "../../Module/ShaderCompiler/ShaderCompiler.h"
 
 #include "RenderBackendD3D12.h"
-#include "RenderCommandListD3D12.h"
 
 #pragma comment ( lib, "d3d12.lib")
 #pragma comment ( lib, "dxgi.lib")
@@ -149,18 +148,15 @@ void RRenderBackendD3D12::Init()
 		DSVDescriptorSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 		CBVSRVUAVDescriptorSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-		CommandLists.emplace_back();
+		GraphicsCommandList.AllocateCommandList(*this);
+		ComputeCommandList.AllocateCommandList(*this);
+		CopyCommandList.AllocateCommandList(*this);
 
-		auto& AllocatedCommandList = CommandLists[0];
-		AllocatedCommandList.AllocateCommandLsit(*this);
+		MainGraphicsCommandList = &GraphicsCommandList;
+		MainComputeCommandList = &ComputeCommandList;
+		MainCopyCommandList = &CopyCommandList;
 
-		// First commandlist is used as a main command list
-		MainCommandList = &CommandLists[0];
-
-		auto& CommandAllocator = CommandLists[0].CommandAllocator;
-		auto& CommandList = CommandLists[0].CommandList;
-
-		CommandLists[0].Reset();
+		GraphicsCommandList.Reset();
 
 		cout << "D3D12 Renderbackend Device Init Success" << endl;
 
@@ -802,6 +798,7 @@ void RRenderBackendD3D12::Init()
 			cout << " Test fence creation " << endl;
 
 			{
+				auto& GraphicsCmd = GraphicsCommandList;
 				CD3DX12_RESOURCE_BARRIER Barriers[] =
 				{
 					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneDepth->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_DEPTH_READ),
@@ -812,12 +809,12 @@ void RRenderBackendD3D12::Init()
 
 					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.DebugTexture->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET),
 				};
-				CommandList->ResourceBarrier(_countof(Barriers), Barriers);
+				GraphicsCmd.ResourceBarrier(_countof(Barriers), Barriers);
 			}
-			CommandLists[0].Close();
+			GraphicsCommandList.Close();
 
 			// Execute the command list.
-			ID3D12CommandList* ppCommandLists[] = { CommandList };
+			ID3D12CommandList* ppCommandLists[] = { GraphicsCommandList.GetRawCommandListBase() };
 			CommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 			WaitForPreviousFence();
 		}
@@ -840,8 +837,6 @@ void RRenderBackendD3D12::Teardown()
 	SwapChain = nullptr;
 
 	// Except below object, Skip all other object tearing down because everything else should be separated soon.
-	CommandLists.clear();
-
 	Device = nullptr;
 
 	cout << "D3D12 Renderbackend Exit" << endl;
@@ -849,27 +844,26 @@ void RRenderBackendD3D12::Teardown()
 
 void RRenderBackendD3D12::Prepass()
 {
-	auto& D3D12CommandList = CommandLists[0];
-	auto& CommandList = CommandLists[0].CommandList;
-	PIXScopedEvent(CommandLists[0].CommandList, 0xFF, TEXT("Prepass"));
+	auto& GraphicsCmd = GraphicsCommandList;
+	GraphicsCmd.BeginEvent(0xFF, TEXT("Prepass"));
 
 	auto DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
-	CommandList->ClearDepthStencilView(DSVHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 0, 0, 0, nullptr);
-	CommandList->OMSetRenderTargets(0, nullptr, false, &DSVHandle);
+	GraphicsCmd.ClearDepthStencilView(DSVHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 0, 0, 0, nullptr);
+	GraphicsCmd.OMSetRenderTargets(0, nullptr, false, &DSVHandle);
 
-	D3D12CommandList.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::Prepass]);
+	GraphicsCmd.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::Prepass]);
 
 	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
-	CommandList->SetDescriptorHeaps(_countof(Heaps), Heaps);
-	CommandList->SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
-	CommandList->SetGraphicsRootDescriptorTable(1, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ShaderResourceView]);
+	GraphicsCmd.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	GraphicsCmd.SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
+	GraphicsCmd.SetGraphicsRootDescriptorTable(1, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ShaderResourceView]);
 
 
 	auto& Mesh = RenderMesh;
-	D3D12CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	D3D12CommandList.SetVertexBuffer(0, Mesh.PositionVertexBuffer);
-	D3D12CommandList.SetVertexBuffer(1, Mesh.UVVertexBuffer);
-	D3D12CommandList.SetIndexBuffer(Mesh.IndexBuffer);
+	GraphicsCmd.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	GraphicsCmd.SetVertexBuffer(0, Mesh.PositionVertexBuffer);
+	GraphicsCmd.SetVertexBuffer(1, Mesh.UVVertexBuffer);
+	GraphicsCmd.SetIndexBuffer(Mesh.IndexBuffer);
 
 	for (int32 iSection = 0; iSection < Mesh.Sections.size(); ++iSection)
 	{
@@ -878,49 +872,50 @@ void RRenderBackendD3D12::Prepass()
 		const int32 NumIndices = Section.End - Section.Start;
 		const int32 StartIndex = Section.Start;
 
-		CommandList->SetGraphicsRoot32BitConstants(3, sizeof(Color) / 4, &Color, 0);
-		CommandList->SetGraphicsRoot32BitConstant(4, Section.MaterialId, 0);
-		CommandList->DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
+		GraphicsCmd.SetGraphicsRoot32BitConstants(3, sizeof(Color) / 4, &Color, 0);
+		GraphicsCmd.SetGraphicsRoot32BitConstant(4, Section.MaterialId, 0);
+		GraphicsCmd.DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
 	}
+
+	GraphicsCmd.EndEvent();
 }
 
 
 void RRenderBackendD3D12::Basepass()
 {
-	auto& D3D12CommandList = CommandLists[0];
-	auto& CommandList = CommandLists[0].CommandList;
-	PIXScopedEvent(CommandLists[0].CommandList, 0xFFFF, TEXT("Basepass"));
+	auto& GraphicsCmd = GraphicsCommandList;
+	GraphicsCmd.BeginEvent(0xFFFF, TEXT("Basepass"));
 
 	auto RTVHandle(SceneTextureRTVHeap->GetCPUDescriptorHandleForHeapStart());
 	auto DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
 
 	// Record commands.
 	const float ClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-	CommandList->ClearRenderTargetView(RTVHandle, ClearColor, 0, nullptr);
+	GraphicsCmd.ClearRenderTargetView(RTVHandle, ClearColor, 0, nullptr);
 	for (int32 i = 0; i < 5; ++i)
 	{
 		CD3DX12_CPU_DESCRIPTOR_HANDLE RTV(SceneTextureRTVHeap->GetCPUDescriptorHandleForHeapStart(), i, RTVDescriptorSize);
-		CommandList->ClearRenderTargetView(RTV, ClearColor, 0, nullptr);
+		GraphicsCmd.ClearRenderTargetView(RTV, ClearColor, 0, nullptr);
 	}
 
-	CommandList->OMSetRenderTargets(5, &RTVHandle, true, &DSVHandle);
+	GraphicsCmd.OMSetRenderTargets(5, &RTVHandle, true, &DSVHandle);
 
-	D3D12CommandList.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::Basepass]);
+	GraphicsCmd.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::Basepass]);
 
 	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
-	CommandList->SetDescriptorHeaps(_countof(Heaps), Heaps);
-	CommandList->SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
-	CommandList->SetGraphicsRootDescriptorTable(1, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ShaderResourceView]);
+	GraphicsCmd.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	GraphicsCmd.SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
+	GraphicsCmd.SetGraphicsRootDescriptorTable(1, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ShaderResourceView]);
 
 	auto& Mesh = RenderMesh;
-	D3D12CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	D3D12CommandList.SetVertexBuffer(0, Mesh.PositionVertexBuffer);
-	D3D12CommandList.SetVertexBuffer(1, Mesh.UVVertexBuffer);
-	D3D12CommandList.SetVertexBuffer(2, Mesh.NormalVertexBuffer);
-	D3D12CommandList.SetVertexBuffer(3, Mesh.TangentVertexBuffer);
-	D3D12CommandList.SetVertexBuffer(4, Mesh.BitangentVertexBuffer);
+	GraphicsCmd.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	GraphicsCmd.SetVertexBuffer(0, Mesh.PositionVertexBuffer);
+	GraphicsCmd.SetVertexBuffer(1, Mesh.UVVertexBuffer);
+	GraphicsCmd.SetVertexBuffer(2, Mesh.NormalVertexBuffer);
+	GraphicsCmd.SetVertexBuffer(3, Mesh.TangentVertexBuffer);
+	GraphicsCmd.SetVertexBuffer(4, Mesh.BitangentVertexBuffer);
 
-	D3D12CommandList.SetIndexBuffer(Mesh.IndexBuffer);
+	GraphicsCmd.SetIndexBuffer(Mesh.IndexBuffer);
 
 	for (int32 iSection = 0; iSection < Mesh.Sections.size(); ++iSection)
 	{
@@ -929,35 +924,37 @@ void RRenderBackendD3D12::Basepass()
 		const int32 NumIndices = Section.End - Section.Start;
 		const int32 StartIndex = Section.Start;
 
-		CommandList->SetGraphicsRoot32BitConstants(3, sizeof(Color) / 4, &Color, 0);
-		CommandList->SetGraphicsRoot32BitConstant(4, Section.MaterialId, 0);
-		CommandList->DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
+		GraphicsCmd.SetGraphicsRoot32BitConstants(3, sizeof(Color) / 4, &Color, 0);
+		GraphicsCmd.SetGraphicsRoot32BitConstant(4, Section.MaterialId, 0);
+		GraphicsCmd.DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
 	}
+
+	GraphicsCmd.EndEvent();
 }
 
-void RRenderBackendD3D12::RenderForwardLights(RRenderCommandListD3D12& CommandList)
+void RRenderBackendD3D12::RenderForwardLights(RGraphicsCommandListD3D12& CommandList)
 {
-	PIXScopedEvent(CommandList.GetRawCommandList(), 0xFFFF, TEXT("Render Forward Lights"));
+	CommandList.BeginEvent(0xFFFF, TEXT("Render Forward Lights"));
 
 	auto RTVHandle(SceneTextureRTVHeap->GetCPUDescriptorHandleForHeapStart());
 	auto DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
 
 	const float ClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-	CommandList.GetRawCommandList()->ClearRenderTargetView(RTVHandle, ClearColor, 0, nullptr);
+	CommandList.ClearRenderTargetView(RTVHandle, ClearColor, 0, nullptr);
 	for (int32 i = 0; i < 1; ++i)
 	{
 		CD3DX12_CPU_DESCRIPTOR_HANDLE RTV(SceneTextureRTVHeap->GetCPUDescriptorHandleForHeapStart(), i, RTVDescriptorSize);
-		CommandList.GetRawCommandList()->ClearRenderTargetView(RTV, ClearColor, 0, nullptr);
+		CommandList.ClearRenderTargetView(RTV, ClearColor, 0, nullptr);
 	}
 
-	CommandList.GetRawCommandList()->OMSetRenderTargets(1, &RTVHandle, true, &DSVHandle);
+	CommandList.OMSetRenderTargets(1, &RTVHandle, true, &DSVHandle);
 
 	CommandList.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::ForwardLighting]);
 
 	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
-	CommandList.GetRawCommandList()->SetDescriptorHeaps(_countof(Heaps), Heaps);
-	CommandList.GetRawCommandList()->SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
-	CommandList.GetRawCommandList()->SetGraphicsRootDescriptorTable(1, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ShaderResourceView]);
+	CommandList.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList.SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
+	CommandList.SetGraphicsRootDescriptorTable(1, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ShaderResourceView]);
 
 	auto& Mesh = RenderMesh;
 	CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -976,15 +973,17 @@ void RRenderBackendD3D12::RenderForwardLights(RRenderCommandListD3D12& CommandLi
 		const int32 NumIndices = Section.End - Section.Start;
 		const int32 StartIndex = Section.Start;
 
-		CommandList.GetRawCommandList()->SetGraphicsRoot32BitConstants(3, sizeof(Color) / 4, &Color, 0);
-		CommandList.GetRawCommandList()->SetGraphicsRoot32BitConstant(4, Section.MaterialId, 0);
-		CommandList.GetRawCommandList()->DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
+		CommandList.SetGraphicsRoot32BitConstants(3, sizeof(Color) / 4, &Color, 0);
+		CommandList.SetGraphicsRoot32BitConstant(4, Section.MaterialId, 0);
+		CommandList.DrawIndexedInstanced(NumIndices, 1, StartIndex, 0, 0);
 	}
+
+	CommandList.EndEvent();
 }
 
-void RRenderBackendD3D12::RenderLights(RRenderCommandListD3D12& CommandList)
+void RRenderBackendD3D12::RenderLights(RGraphicsCommandListD3D12& CommandList)
 {
-	PIXScopedEvent(CommandList.GetRawCommandList(), 0xFFFF, TEXT("RenderLights"));
+	CommandList.BeginEvent(0xFFFF, TEXT("RenderLights"));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE RTVHandles[] =
 	{
@@ -995,24 +994,26 @@ void RRenderBackendD3D12::RenderLights(RRenderCommandListD3D12& CommandList)
 	const float ClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	for (auto& RTV : RTVHandles)
 	{
-		CommandList.GetRawCommandList()->ClearRenderTargetView(RTV, ClearColor, 0, nullptr);
+		CommandList.ClearRenderTargetView(RTV, ClearColor, 0, nullptr);
 	}
 
-	CommandList.GetRawCommandList()->OMSetRenderTargets(_countof(RTVHandles), RTVHandles, false, nullptr);
+	CommandList.OMSetRenderTargets(_countof(RTVHandles), RTVHandles, false, nullptr);
 	CommandList.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::DeferredLighting]);
 
 	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
-	CommandList.GetRawCommandList()->SetDescriptorHeaps(_countof(Heaps), Heaps);
-	CommandList.GetRawCommandList()->SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
-	CommandList.GetRawCommandList()->SetGraphicsRootDescriptorTable(1, SceneTextures.GPUAddressHandle);
+	CommandList.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList.SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
+	CommandList.SetGraphicsRootDescriptorTable(1, SceneTextures.GPUAddressHandle);
 
 	CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	CommandList.GetRawCommandList()->DrawInstanced(3, 1, 0, 0);
+	CommandList.DrawInstanced(3, 1, 0, 0);
+
+	CommandList.EndEvent();
 }
 
-void RRenderBackendD3D12::RenderLocalLights(RRenderCommandListD3D12& CommandList, uint32 NumLocalLight)
+void RRenderBackendD3D12::RenderLocalLights(RGraphicsCommandListD3D12& CommandList, uint32 NumLocalLight)
 {
-	PIXScopedEvent(CommandList.GetRawCommandList(), 0xFFFF, TEXT("RenderLocalLights"));
+	CommandList.BeginEvent(0xFFFF, TEXT("RenderLocalLights"));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE RTVHandles[] =
 	{
@@ -1022,27 +1023,27 @@ void RRenderBackendD3D12::RenderLocalLights(RRenderCommandListD3D12& CommandList
 
 	auto DSVHandle(DSVHeap->GetCPUDescriptorHandleForHeapStart());
 
-	CommandList.GetRawCommandList()->OMSetRenderTargets(_countof(RTVHandles), RTVHandles, false, &DSVHandle);
+	CommandList.OMSetRenderTargets(_countof(RTVHandles), RTVHandles, false, &DSVHandle);
 	CommandList.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::DeferredLocalLighting]);
 
 	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
-	CommandList.GetRawCommandList()->SetDescriptorHeaps(_countof(Heaps), Heaps);
-	CommandList.GetRawCommandList()->SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
-	CommandList.GetRawCommandList()->SetGraphicsRootDescriptorTable(1, SceneTextures.GPUAddressHandle);
+	CommandList.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	CommandList.SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
+	CommandList.SetGraphicsRootDescriptorTable(1, SceneTextures.GPUAddressHandle);
 
 	auto& Mesh = LightVolumeMesh;
 	CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	CommandList.SetVertexBuffer(0, Mesh.PositionVertexBuffer);
 
-	CommandList.GetRawCommandList()->DrawInstanced(Mesh.NumVertices, NumLocalLight, 0, 0);
+	CommandList.DrawInstanced(Mesh.NumVertices, NumLocalLight, 0, 0);
+
+	CommandList.EndEvent();
 }
 
 void RRenderBackendD3D12::Postprocess()
 {
-	auto& D3D12CommandList = CommandLists[0];
-	auto& CommandList = CommandLists[0].CommandList;
-
-	PIXScopedEvent(CommandLists[0].CommandList, 0xFFFF, TEXT("Postprocess"));
+	auto& GraphicsCmd = GraphicsCommandList;
+	GraphicsCmd.BeginEvent(0xFFFF, TEXT("Postprocess"));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE RTVHandles[] =
 	{ 
@@ -1050,109 +1051,110 @@ void RRenderBackendD3D12::Postprocess()
 	};
 
 	const float ClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-	CommandList->ClearRenderTargetView(RTVHandles[0], ClearColor, 0, nullptr);
-	CommandList->OMSetRenderTargets(1, RTVHandles, false, nullptr);
+	GraphicsCmd.ClearRenderTargetView(RTVHandles[0], ClearColor, 0, nullptr);
+	GraphicsCmd.OMSetRenderTargets(1, RTVHandles, false, nullptr);
 
-	D3D12CommandList.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::Postprocess]);
+	GraphicsCmd.SetGraphicsPipeline(GraphicsPipelines[EGraphicsPipeline::Postprocess]);
 
 	ID3D12DescriptorHeap* Heaps[] = { CBVSRVHeap.Get() };
-	CommandList->SetDescriptorHeaps(_countof(Heaps), Heaps);
-	CommandList->SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
-	CommandList->SetGraphicsRootDescriptorTable(1, SceneTextures.GPUAddressHandle);
+	GraphicsCmd.SetDescriptorHeaps(_countof(Heaps), Heaps);
+	GraphicsCmd.SetGraphicsRootDescriptorTable(0, AddressCacheForDescriptorHeapStart[EDescriptorHeapAddressSpace::ConstantBufferView]);
+	GraphicsCmd.SetGraphicsRootDescriptorTable(1, SceneTextures.GPUAddressHandle);
 
-	D3D12CommandList.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	CommandList->DrawInstanced(3, 1, 0, 0);
+	GraphicsCmd.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	GraphicsCmd.DrawInstanced(3, 1, 0, 0);
+
+	GraphicsCmd.EndEvent();
 }
 
 void RRenderBackendD3D12::FunctionalityTestRender(bool bDeferred, uint32 TestInput)
 {
-	auto& D3D12CommandList = CommandLists[0];
-	auto& CommandList = CommandLists[0].CommandList;
+	auto& GraphicsCmd = GraphicsCommandList;
+
+	GraphicsCmd.BeginEvent(0xFFFFFFFF, TEXT("FunctionalityTestRender"));
 
 	{
-		PIXScopedEvent(CommandLists[0].CommandList, 0xFFFFFFFF, TEXT("FunctionalityTestRender"));
+		CD3DX12_RESOURCE_BARRIER Barriers[] =
+		{
+			CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.BaseColor->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.WorldNormal->GetUnderlyingResource(),D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.Material->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneDepth->GetUnderlyingResource(), D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE)
+		};
+		GraphicsCmd.ResourceBarrier(_countof(Barriers), Barriers);
+	}
+	GraphicsCmd.SetViewports(1, &Viewport);
+	GraphicsCmd.SetScissorRects(1, &ScissorRect);
+
+	Prepass();
+
+	{
+		CD3DX12_RESOURCE_BARRIER Barriers[] =
+		{
+			CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneDepth->GetUnderlyingResource(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_READ),
+		};
+		GraphicsCmd.ResourceBarrier(_countof(Barriers), Barriers);
+	}
+
+	if (bDeferred)
+	{
+		Basepass();
 
 		{
 			CD3DX12_RESOURCE_BARRIER Barriers[] =
 			{
-				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
-				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.BaseColor->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
-				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.WorldNormal->GetUnderlyingResource(),D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
-				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.Material->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET),
-				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneDepth->GetUnderlyingResource(), D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE)
-			};
-			CommandList->ResourceBarrier(_countof(Barriers), Barriers);
-		}
-		CommandList->RSSetViewports(1, &Viewport);
-		CommandList->RSSetScissorRects(1, &ScissorRect);
+				// CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.BaseColor->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.WorldNormal->GetUnderlyingResource(),D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.Material->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				//CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneDepth->GetUnderlyingResource(), D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_GENERIC_READ),
 
-		Prepass();
+				CD3DX12_RESOURCE_BARRIER::Transition(RenderTargets[FrameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			};
+			GraphicsCmd.ResourceBarrier(_countof(Barriers), Barriers);
+		}
+
+		RenderLights(GraphicsCommandList);
+		RenderLocalLights(GraphicsCommandList, TestInput);
 
 		{
 			CD3DX12_RESOURCE_BARRIER Barriers[] =
 			{
-				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneDepth->GetUnderlyingResource(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_READ),
+				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
 			};
-			CommandList->ResourceBarrier(_countof(Barriers), Barriers);
-		}
-
-		if (bDeferred)
-		{
-			Basepass();
-
-			{
-				CD3DX12_RESOURCE_BARRIER Barriers[] =
-				{
-					// CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.BaseColor->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.WorldNormal->GetUnderlyingResource(),D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.Material->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
-					//CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneDepth->GetUnderlyingResource(), D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_GENERIC_READ),
-
-					CD3DX12_RESOURCE_BARRIER::Transition(RenderTargets[FrameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET),
-				};
-				CommandList->ResourceBarrier(_countof(Barriers), Barriers);
-			}
-
-			RenderLights(CommandLists[0]);
-			RenderLocalLights(CommandLists[0], TestInput);
-
-			{
-				CD3DX12_RESOURCE_BARRIER Barriers[] =
-				{
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
-				};
-				CommandList->ResourceBarrier(_countof(Barriers), Barriers);
-			}
-		}
-		else
-		{
-			RenderForwardLights(CommandLists[0]);
-
-			{
-				CD3DX12_RESOURCE_BARRIER Barriers[] =
-				{
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.BaseColor->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.WorldNormal->GetUnderlyingResource(),D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.Material->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
-					//CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneDepth->GetUnderlyingResource(), D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_GENERIC_READ),
-					CD3DX12_RESOURCE_BARRIER::Transition(RenderTargets[FrameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET),
-				};
-				CommandList->ResourceBarrier(_countof(Barriers), Barriers);
-			}
-		}
-
-		Postprocess();
-
-		{
-			CD3DX12_RESOURCE_BARRIER Barriers[] =
-			{
-				CD3DX12_RESOURCE_BARRIER::Transition(RenderTargets[FrameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT),
-			};
-			CommandList->ResourceBarrier(_countof(Barriers), Barriers);
+			GraphicsCmd.ResourceBarrier(_countof(Barriers), Barriers);
 		}
 	}
+	else
+	{
+		RenderForwardLights(GraphicsCommandList);
+
+		{
+			CD3DX12_RESOURCE_BARRIER Barriers[] =
+			{
+				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.BaseColor->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.WorldNormal->GetUnderlyingResource(),D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.Material->GetUnderlyingResource(),	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ),
+				//CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneDepth->GetUnderlyingResource(), D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_GENERIC_READ),
+				CD3DX12_RESOURCE_BARRIER::Transition(RenderTargets[FrameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			};
+			GraphicsCmd.ResourceBarrier(_countof(Barriers), Barriers);
+		}
+	}
+
+	Postprocess();
+
+	{
+		CD3DX12_RESOURCE_BARRIER Barriers[] =
+		{
+			CD3DX12_RESOURCE_BARRIER::Transition(RenderTargets[FrameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT),
+		};
+		GraphicsCmd.ResourceBarrier(_countof(Barriers), Barriers);
+	}
+
+	GraphicsCmd.EndEvent();
 
 	Execute();
 
@@ -1162,11 +1164,11 @@ void RRenderBackendD3D12::FunctionalityTestRender(bool bDeferred, uint32 TestInp
 
 void RRenderBackendD3D12::Execute()
 {
-	CommandLists[0].Close();
+	GraphicsCommandList.Close();
 
 	QueueTimer.CurrentTime = std::chrono::high_resolution_clock::now();
 	// Execute the command list.
-	ID3D12CommandList* ppCommandLists[] = { CommandLists[0].GetRawCommandList()};
+	ID3D12CommandList* ppCommandLists[] = { GraphicsCommandList.GetRawCommandListBase() };
 	CommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 }
@@ -1194,10 +1196,8 @@ void RRenderBackendD3D12::WaitForPreviousFence()
 
 void RRenderBackendD3D12::RenderBegin()
 {
-	auto& D3D12CommandList = CommandLists[0];
-	D3D12CommandList.Reset();
-
-	PIXBeginEvent(D3D12CommandList.GetRawCommandList(), 0xFFFFFFFF, TEXT("RenderFrame"));
+	GraphicsCommandList.Reset();
+	GraphicsCommandList.BeginEvent(0xFFFFFFFF, TEXT("RenderFrame"));
 }
 
 void RRenderBackendD3D12::RenderFinish()
@@ -1206,7 +1206,7 @@ void RRenderBackendD3D12::RenderFinish()
 	// After implementing asynchronous GPU flow, this should be changed as following the GPU lifetime.
 	UploadHeapReferences.clear();
 
-	PIXEndEvent();
+	GraphicsCommandList.EndEvent();
 
 	WaitForPreviousFence();
 }

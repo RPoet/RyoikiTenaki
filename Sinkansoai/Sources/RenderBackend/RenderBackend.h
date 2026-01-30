@@ -22,12 +22,25 @@ enum EResourceFlag
 	AllowSimultanenousAccess = 5,
 };
 
+enum class ERenderBackendType : uint8
+{
+	D3D12,
+	Vulkan,
+	SIMD,
+	Compute
+};
+
+ERenderBackendType BackendTypeFromName(const String& BackendName);
+const String& BackendNameFromType(ERenderBackendType BackendType);
+
 
 class RRenderBackend
 {
 protected:
 	String BackendName = TEXT("NONE");
-	RRenderCommandList* MainCommandList{};
+	RGraphicsCommandList* MainGraphicsCommandList{};
+	RComputeCommandList* MainComputeCommandList{};
+	RCopyCommandList* MainCopyCommandList{};
 
 public:
 
@@ -51,9 +64,19 @@ public:
 		return BackendName;
 	}
 
-	RRenderCommandList* GetMainCommandList()
+	RGraphicsCommandList* GetMainGraphicsCommandList()
 	{
-		return MainCommandList;
+		return MainGraphicsCommandList;
+	}
+
+	RComputeCommandList* GetMainComputeCommandList()
+	{
+		return MainComputeCommandList;
+	}
+
+	RCopyCommandList* GetMainCopyCommandList()
+	{
+		return MainCopyCommandList;
 	}
 
 	virtual RDynamicBuffer* GetGlobalDynamicBuffer(uint32 Index) { return nullptr;  }

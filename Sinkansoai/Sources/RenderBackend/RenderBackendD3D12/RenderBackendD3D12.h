@@ -3,7 +3,9 @@
 #include "../../Singleton.h"
 #include "../RenderBackend.h"
 #include "RenderBackendD3D12Common.h"
-#include "RenderCommandListD3D12.h"
+#include "GraphicsCommandListD3D12.h"
+#include "ComputeCommandListD3D12.h"
+#include "CopyCommandListD3D12.h"
 #include "DynamicBufferD3D12.h"
 #include "ResourceBufferD3D12.h"
 
@@ -109,7 +111,9 @@ private:
 	uint32 bSupportsRootSignatureVersion1_1 : 1;
 
 	TRefCountPtr< ID3D12Device > Device;
-	vector<RRenderCommandListD3D12> CommandLists;
+	RGraphicsCommandListD3D12 GraphicsCommandList;
+	RComputeCommandListD3D12 ComputeCommandList;
+	RCopyCommandListD3D12 CopyCommandList;
 	TRefCountPtr<ID3D12CommandQueue> CommandQueue;
 
 	vector< RGraphicsPipeline > GraphicsPipelines;
@@ -157,9 +161,9 @@ public:
 
 	void Prepass();
 	void Basepass();
-	void RenderForwardLights(RRenderCommandListD3D12& CommandList);
-	void RenderLights(RRenderCommandListD3D12& CommandList);
-	void RenderLocalLights(RRenderCommandListD3D12& CommandList, uint32 NumLocalLight);
+	void RenderForwardLights(RGraphicsCommandListD3D12& CommandList);
+	void RenderLights(RGraphicsCommandListD3D12& CommandList);
+	void RenderLocalLights(RGraphicsCommandListD3D12& CommandList, uint32 NumLocalLight);
 	void Postprocess();
 
 	virtual void FunctionalityTestRender(bool bDeferred, uint32 TestInput) override;
@@ -169,9 +173,19 @@ public:
 		return Device.Get();
 	}
 
-	RRenderCommandListD3D12& GetMainCommandList()
+	RGraphicsCommandListD3D12& GetMainGraphicsCommandList()
 	{
-		return CommandLists[0];
+		return GraphicsCommandList;
+	}
+
+	RComputeCommandListD3D12& GetMainComputeCommandList()
+	{
+		return ComputeCommandList;
+	}
+
+	RCopyCommandListD3D12& GetMainCopyCommandList()
+	{
+		return CopyCommandList;
 	}
 
 	void Execute();
@@ -198,5 +212,7 @@ public:
 
 	void CreateRootSignature(const CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC& RootSignatureDesc, RGraphicsPipeline& Pipepline);
 
-	friend class RRenderCommandListD3D12;
+	friend class RGraphicsCommandListD3D12;
+	friend class RComputeCommandListD3D12;
+	friend class RCopyCommandListD3D12;
 };

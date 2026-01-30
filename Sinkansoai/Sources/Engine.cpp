@@ -8,6 +8,37 @@
 
 #include "Algorithm.h"
 
+#include <cwchar>
+#include <cwctype>
+
+static ERenderBackendType SelectBackendFromCmdLine()
+{
+	String BackendName = TEXT("D3D12");
+
+	if (GStartupParams.lpCmdLine && wcslen(GStartupParams.lpCmdLine) > 0)
+	{
+		const wchar_t* Token = wcsstr(GStartupParams.lpCmdLine, L"-backend=");
+		if (Token)
+		{
+			Token += wcslen(L"-backend=");
+
+			String Parsed;
+			while (*Token && !iswspace(*Token))
+			{
+				Parsed.push_back(*Token);
+				++Token;
+			}
+
+			if (!Parsed.empty())
+			{
+				BackendName = Parsed;
+			}
+		}
+	}
+
+	return BackendTypeFromName(BackendName);
+}
+
 
 void MEngine::Init()
 {
@@ -23,7 +54,7 @@ void MEngine::Init()
 	});
 
 	// Late Intialization to wait for dependency module initialization
-	InitBackend(TEXT("D3D12"));
+	InitBackend(SelectBackendFromCmdLine());
 
 	bRun = true;
 }

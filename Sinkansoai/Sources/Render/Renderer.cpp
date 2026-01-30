@@ -136,7 +136,7 @@ void RRenderer::ResolveViewMatrices()
 	}
 }
 
-void RRenderer::RenderDeferredShading(RRenderCommandList& CommandList)
+void RRenderer::RenderDeferredShading(RGraphicsCommandList& CommandList)
 {
 	GBackend->RenderBegin();
 	ResolveViewMatrices();
@@ -151,7 +151,7 @@ void RRenderer::RenderDeferredShading(RRenderCommandList& CommandList)
 	GBackend->RenderFinish();
 }
 
-void RRenderer::RenderForwardShading(RRenderCommandList& CommandList)
+void RRenderer::RenderForwardShading(RGraphicsCommandList& CommandList)
 {
 	GBackend->RenderBegin();
 	ResolveViewMatrices();
@@ -166,7 +166,7 @@ void RRenderer::RenderForwardShading(RRenderCommandList& CommandList)
 	GBackend->RenderFinish();
 }
 
-void DrawViweport_RT(RRenderCommandList& CommandList, RScene& Scene, const RViewContext& ViewContext)
+void DrawViweport_RT(RGraphicsCommandList& CommandList, RScene& Scene, const RViewContext& ViewContext)
 {
 	auto Renderer = new RRenderer(Scene);
 	Renderer->AddView(ViewContext);

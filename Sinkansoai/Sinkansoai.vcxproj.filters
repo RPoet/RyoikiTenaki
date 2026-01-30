@@ -13,6 +13,15 @@
     <Filter Include="RenderBackend\RenderBackendD3D12">
       <UniqueIdentifier>{c2b1ef6a-7807-43c2-b28b-c6fa83ede732}</UniqueIdentifier>
     </Filter>
+    <Filter Include="RenderBackend\RenderBackendVulkan">
+      <UniqueIdentifier>{a6f48a6b-4afc-4fda-97a1-0745b5ca0a80}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderBackend\RenderBackendSIMD">
+      <UniqueIdentifier>{9b2a3f5f-2b7c-4e0c-8f0f-65f7852d92f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderBackend\RenderBackendCompute">
+      <UniqueIdentifier>{01a0e398-3f7a-4f1d-93f0-50f5a6089a6f}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Tasks">
       <UniqueIdentifier>{d9acebef-87e6-42bc-bb2a-976425842d4f}</UniqueIdentifier>
     </Filter>
@@ -123,16 +132,25 @@
     <ClCompile Include="Sources\RenderBackend\RenderBackend.cpp">
       <Filter>RenderBackend</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderBackendCompute\RenderBackendCompute.cpp">
+      <Filter>RenderBackend\RenderBackendCompute</Filter>
+    </ClCompile>
     <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12.cpp">
       <Filter>RenderBackend\RenderBackendD3D12</Filter>
     </ClCompile>
     <ClCompile Include="Sources\RenderBackend\RenderCommandList.cpp">
       <Filter>RenderBackend</Filter>
     </ClCompile>
-    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\RenderCommandListD3D12.cpp">
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\ComputeCommandListD3D12.cpp">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\CopyCommandListD3D12.cpp">
       <Filter>RenderBackend\RenderBackendD3D12</Filter>
     </ClCompile>
     <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\DynamicBufferD3D12.cpp">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\GraphicsCommandListD3D12.cpp">
       <Filter>RenderBackend\RenderBackendD3D12</Filter>
     </ClCompile>
     <ClCompile Include="Sources\RenderBackend\DynamicBuffer.cpp">
@@ -158,6 +176,12 @@
     </ClCompile>
     <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\TextureD3D12.cpp">
       <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderBackendSIMD\RenderBackendSIMD.cpp">
+      <Filter>RenderBackend\RenderBackendSIMD</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderBackend\RenderBackendVulkan\RenderBackendVulkan.cpp">
+      <Filter>RenderBackend\RenderBackendVulkan</Filter>
     </ClCompile>
     <ClCompile Include="Sources\RenderBackend\Texture.cpp">
       <Filter>RenderBackend</Filter>
@@ -257,6 +281,9 @@
     <ClInclude Include="Sources\RenderBackend\RenderBackend.h">
       <Filter>RenderBackend</Filter>
     </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendCompute\RenderBackendCompute.h">
+      <Filter>RenderBackend\RenderBackendCompute</Filter>
+    </ClInclude>
     <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\d3dx12.h">
       <Filter>RenderBackend\RenderBackendD3D12</Filter>
     </ClInclude>
@@ -275,7 +302,13 @@
     <ClInclude Include="Sources\Render\View.h">
       <Filter>RenderBackend\Render</Filter>
     </ClInclude>
-    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderCommandListD3D12.h">
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\ComputeCommandListD3D12.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\CopyCommandListD3D12.h">
+      <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\GraphicsCommandListD3D12.h">
       <Filter>RenderBackend\RenderBackendD3D12</Filter>
     </ClInclude>
     <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12Common.h">
@@ -316,6 +349,15 @@
     </ClInclude>
     <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\TextureD3D12.h">
       <Filter>RenderBackend\RenderBackendD3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendNull.h">
+      <Filter>RenderBackend</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendSIMD\RenderBackendSIMD.h">
+      <Filter>RenderBackend\RenderBackendSIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderBackend\RenderBackendVulkan\RenderBackendVulkan.h">
+      <Filter>RenderBackend\RenderBackendVulkan</Filter>
     </ClInclude>
     <ClInclude Include="Sources\RenderBackend\Texture.h">
       <Filter>RenderBackend</Filter>

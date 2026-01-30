@@ -13,7 +13,7 @@ int32 TTaskQueue< TCommandType >::Main()
 		}
 
 		//cout << CommandNames.front() << endl;
-		TaskQueue.front()(*GBackend->GetMainCommandList());
+		TaskQueue.front()(*GBackend->GetMainGraphicsCommandList());
 		//cout << CommandNames.front() << endl;
 
 		TaskQueue.pop();

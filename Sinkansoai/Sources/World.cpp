@@ -7,7 +7,7 @@
 * Example Usage of the render system command.
 * 
 	MTaskSystem::Get().AddRenderCommand(TEXT("Scene Init Command"),
-	[](RRenderCommandList&)
+	[](RGraphicsCommandList&)
 	{
 		cout << "Scene Init Command" << endl;
 	});
@@ -51,13 +51,13 @@ void MWorld::DrawViewport()
 	float SceneDeltaTime = Scene->GetDeltaTime();
 
 	MTaskSystem::Get().AddRenderCommand(TEXT("Update Delta Time"),
-		[InScene = Scene, SceneDeltaTime](RRenderCommandList& CommandList)
+		[InScene = Scene, SceneDeltaTime](RGraphicsCommandList& CommandList)
 		{
 			InScene->SetDelatTime(SceneDeltaTime);
 		});
 
 	MTaskSystem::Get().AddRenderCommand(TEXT("Draw Viewport"),
-		[InCamera = Camera, InScene = Scene](RRenderCommandList& CommandList)
+		[InCamera = Camera, InScene = Scene](RGraphicsCommandList& CommandList)
 		{
 			//cout << "Draw Viweport Command body" << endl;
 			RViewContext ViewContext = const_cast<MCamera&>(InCamera).GetViewContext();

@@ -29,10 +29,10 @@ public:
 
 	void ResolveViewMatrices();
 
-	void RenderDeferredShading(RRenderCommandList& CommandList);
-	void RenderForwardShading(RRenderCommandList& CommandList);
+	void RenderDeferredShading(RGraphicsCommandList& CommandList);
+	void RenderForwardShading(RGraphicsCommandList& CommandList);
 };
 
 
-void DrawViweport_RT(RRenderCommandList& CommandList, RScene& Scene, const RViewContext& ViewContext);
+void DrawViweport_RT(RGraphicsCommandList& CommandList, RScene& Scene, const RViewContext& ViewContext);
 

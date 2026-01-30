@@ -4,7 +4,6 @@
 #include "../ResourceBuffer.h"
 
 #include "RenderBackendD3D12Common.h"
-#include "RenderCommandListD3D12.h"
 
 class RRenderBackendD3D12;
 class RVertexBufferD3D12 : public RVertexBuffer

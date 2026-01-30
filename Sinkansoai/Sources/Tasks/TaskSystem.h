@@ -7,7 +7,7 @@ class MTaskSystem : public Singleton<MTaskSystem>
 {
 private:
 
-	using RenderCommand = std::function<void(RRenderCommandList&)>;
+	using RenderCommand = std::function<void(RGraphicsCommandList&)>;
 	TTaskQueue<RenderCommand> RenderCommandQueue;
 
 	//using TaskCommand = void(*)(void);
