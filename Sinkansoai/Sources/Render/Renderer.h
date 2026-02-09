@@ -1,6 +1,7 @@
 #pragma once
 #include "Scene.h"
 #include "View.h"
+#include "SceneTextures.h"
 
 #include "../RenderBackend/RenderBackend.h"
 #include "../RenderBackend/RenderCommandList.h"
@@ -13,18 +14,27 @@ private:
 
 	RScene& Scene;
 
-	vector< RViewContext > ViewContexts{};
-	vector< RViewMatrices > ViewMatrices{};
-	
+	vector<ViewContext> ViewContexts{};
+	vector<ViewMatrices> ViewMatrices{};
+	RSceneTextures SceneTextures{};
+
+	void EnsureSceneTexturesInitialized(RRenderBackend& Backend);
+
 
 public:
 	RRenderer(RScene& Scene);
 	~RRenderer() = default;
 
-	void AddView(const RViewContext& ViewContext)
+	void AddView(const ViewContext& ViewContext)
 	{
 		ViewContexts.emplace_back(ViewContext);
 		ViewMatrices.emplace_back();
+	}
+
+	void ResetViews()
+	{
+		ViewContexts.clear();
+		ViewMatrices.clear();
 	}
 
 	void ResolveViewMatrices();
@@ -42,5 +52,5 @@ public:
 };
 
 
-void DrawViweport_RT(RGraphicsCommandList& CommandList, RScene& Scene, const RViewContext& ViewContext);
+void DrawViweport_RT(RGraphicsCommandList& CommandList, RScene& Scene, const ViewContext& ViewContext);
 

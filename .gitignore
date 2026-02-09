@@ -54,6 +54,10 @@ Build/*
 x64/
 Debug/
 
+# Resources
+Resource/
+Resources/
+
 # Whitelist PakBlacklist-<BuildConfiguration>.txt files
 !Build/*/
 Build/*/**

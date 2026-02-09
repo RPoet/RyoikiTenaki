@@ -55,11 +55,23 @@
     <Filter Include="Module\ShaderCompiler">
       <UniqueIdentifier>{1d6311df-9110-481e-8c36-bf287a9207df}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Module\EditorUI">
+      <UniqueIdentifier>{b1fdc411-5c62-46de-993a-3df151dca0c5}</UniqueIdentifier>
+    </Filter>
     <Filter Include="RenderBackend\Render">
       <UniqueIdentifier>{f978d2d6-70c5-4627-a0d2-7f2f256acc6f}</UniqueIdentifier>
     </Filter>
     <Filter Include="RenderBackend\Render\Shader">
       <UniqueIdentifier>{5914b688-e88c-4f88-a394-7b287986ee6a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty">
+      <UniqueIdentifier>{942ed3b0-935d-4db2-9d4e-7f5ed3a7a3f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\ImGui">
+      <UniqueIdentifier>{5dfc97dc-f6e0-4f42-94da-b4193a77c08b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\ImGui\Backends">
+      <UniqueIdentifier>{5ba3b9b3-6424-4ab9-a1e9-11ad1fd23e65}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -126,6 +138,9 @@
     <ClCompile Include="Sources\Render\Scene.cpp">
       <Filter>RenderBackend\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\Render\MaterialRegistry.cpp">
+      <Filter>RenderBackend\Render</Filter>
+    </ClCompile>
     <ClCompile Include="Sources\Render\Renderer.cpp">
       <Filter>RenderBackend\Render</Filter>
     </ClCompile>
@@ -168,6 +183,24 @@
     <ClCompile Include="Sources\Module\Mesh\MeshBuilder.cpp">
       <Filter>Module\Mesh</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\Module\Mesh\MeshBuilderGLTF.cpp">
+      <Filter>Module\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Module\Mesh\ThirdParty\OpenFBX\ofbx.cpp">
+      <Filter>Module\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Module\Mesh\ThirdParty\OpenFBX\lib\deflate_decompress.c">
+      <Filter>Module\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Module\Mesh\ThirdParty\OpenFBX\lib\utils.c">
+      <Filter>Module\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Module\Mesh\ThirdParty\OpenFBX\lib\x86\cpu_features.c">
+      <Filter>Module\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Module\EditorUI\EditorUI.cpp">
+      <Filter>Module\EditorUI</Filter>
+    </ClCompile>
     <ClCompile Include="Sources\Module\Texture\TextureBuilder.cpp">
       <Filter>Module\Texture</Filter>
     </ClCompile>
@@ -186,8 +219,32 @@
     <ClCompile Include="Sources\RenderBackend\Texture.cpp">
       <Filter>RenderBackend</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\SceneSelection.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="Sources\Module\ShaderCompiler\ShaderCompiler.cpp">
       <Filter>Module\ShaderCompiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\ThirdParty\ImGui\imgui.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\ThirdParty\ImGui\imgui_demo.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\ThirdParty\ImGui\imgui_draw.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\ThirdParty\ImGui\imgui_tables.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\ThirdParty\ImGui\imgui_widgets.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\ThirdParty\ImGui\backends\imgui_impl_dx12.cpp">
+      <Filter>ThirdParty\ImGui\Backends</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\ThirdParty\ImGui\backends\imgui_impl_win32.cpp">
+      <Filter>ThirdParty\ImGui\Backends</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -275,6 +332,9 @@
     <ClInclude Include="Sources\Render\Renderer.h">
       <Filter>RenderBackend\Render</Filter>
     </ClInclude>
+    <ClInclude Include="Sources\Render\MaterialRegistry.h">
+      <Filter>RenderBackend\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Sources\Render\Scene.h">
       <Filter>RenderBackend\Render</Filter>
     </ClInclude>
@@ -341,6 +401,15 @@
     <ClInclude Include="Sources\Module\Mesh\MeshBuilder.h">
       <Filter>Module\Mesh</Filter>
     </ClInclude>
+    <ClInclude Include="Sources\Module\EditorUI\EditorUI.h">
+      <Filter>Module\EditorUI</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Module\Mesh\stb_image.h">
+      <Filter>Module\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Module\Mesh\tiny_gltf.h">
+      <Filter>Module\Mesh</Filter>
+    </ClInclude>
     <ClInclude Include="Sources\Module\Texture\TextureBuilder.h">
       <Filter>Module\Texture</Filter>
     </ClInclude>
@@ -367,6 +436,36 @@
     </ClInclude>
     <ClInclude Include="Sources\Module\Mesh\TinyObjLoader.h">
       <Filter>Module\ShaderCompiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\SceneSelection.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ThirdParty\ImGui\imgui.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ThirdParty\ImGui\imconfig.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ThirdParty\ImGui\imgui_internal.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ThirdParty\ImGui\backends\imgui_impl_dx12.h">
+      <Filter>ThirdParty\ImGui\Backends</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ThirdParty\ImGui\backends\imgui_impl_win32.h">
+      <Filter>ThirdParty\ImGui\Backends</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ThirdParty\ImGui\imstb_rectpack.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ThirdParty\ImGui\imstb_textedit.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ThirdParty\ImGui\imstb_truetype.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ThirdParty\json\json.hpp">
+      <Filter>ThirdParty</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

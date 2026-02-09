@@ -2,6 +2,7 @@
 #include "Tasks/TaskSystem.h"
 #include "Module.h"
 #include "RenderBackend/RenderBackendCommon.h"
+#include "SceneSelection.h"
 
 #include "Timer.h"
 #include "Input.h"
@@ -54,6 +55,7 @@ void MEngine::Init()
 	});
 
 	// Late Intialization to wait for dependency module initialization
+	SelectSceneFromConsole();
 	InitBackend(SelectBackendFromCmdLine());
 
 	bRun = true;

@@ -24,9 +24,9 @@ public:
 	virtual void DeallocateResource() override;
 
 
-	TRefCountPtr<ID3D12Resource>&  GetUnderlyingResource()
+	void* GetUnderlyingResource() override final
 	{
-		return Resource;
+		return Resource.Get();
 	}
 
 	const D3D12_VERTEX_BUFFER_VIEW& GetVertexBufferView() const
@@ -53,9 +53,9 @@ public:
 
 	virtual void DeallocateResource() override;
 
-	TRefCountPtr<ID3D12Resource>& GetUnderlyingResource()
+	void* GetUnderlyingResource() override final
 	{
-		return Resource;
+		return Resource.Get();
 	}
 
 	const D3D12_INDEX_BUFFER_VIEW& GetIndexBufferView() const

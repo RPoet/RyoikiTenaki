@@ -47,3 +47,6 @@ public:
 	virtual void StreamTexture( void* pData ) {}
 };
 
+// Role-based naming aliases (render resource)
+using TextureResource = RTexture;
+

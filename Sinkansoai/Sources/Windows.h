@@ -1,12 +1,12 @@
 #pragma once
-#define WIN32_LEAN_AND_MEAN
+
+#include "Definitions.h"  // Must be first for platform macros
+
 #include <vector>
 #include <thread>
 #include <string>
-#include <windows.h>
 #include <stdio.h>
 
-#include "Definitions.h"
 #include "Module.h"
 
 class MWindow : public MModuleBase

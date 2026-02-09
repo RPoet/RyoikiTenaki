@@ -2,14 +2,49 @@
 
 #include "../RenderCommandList.h"
 #include "RenderBackendD3D12Common.h"
+#include "MemoryScratchPad.h"
 
 class RRenderBackendD3D12;
+struct ResourceBarrier;
+
+class BackendCommandListCommon : public BackendCommandList
+{
+protected:
+	ID3D12CommandAllocator* CommandAllocator{};
+	ID3D12GraphicsCommandList* CommandList{};
+	BackendCommandListMemoryScratchPad ScratchPad;
+
+	CommandListType Type = NumCommandList;
+	uint32 Counter = 0;
+
+public:
+	BackendCommandListCommon(CommandListType Type)
+		: Type(Type)
+	{
+	};
+
+	virtual ~BackendCommandListCommon();
+	void AllocateCommandList(RRenderBackendD3D12& Backend, D3D12_COMMAND_LIST_TYPE CommandListType);
+	void BeginEvent(UINT64 Color, const wchar_t* Name)  override final;
+	void EndEvent() override final;
+	void Reset() override final;
+	void Close() override final;
+	void SumbitResourceBarriers(uint32 NumBarriers, const ResourceBarrier* Barriers) override final;
+
+	inline ID3D12GraphicsCommandList* operator()()
+	{
+		return CommandList;
+	}
+
+	friend class RGraphicsCommandListD3D12;
+	friend class RComputeCommandListD3D12;
+	friend class RCopyCommandListD3D12;
+};
 
 class RGraphicsCommandListD3D12 : public RGraphicsCommandList
 {
 private:
-	ID3D12CommandAllocator* CommandAllocator{};
-	ID3D12GraphicsCommandList* CommandList{};
+	BackendCommandListCommon UnderlyingCommandList{ CommandListType::Graphics };
 
 public:
 	RGraphicsCommandListD3D12() = default;
@@ -19,8 +54,10 @@ public:
 
 	void Reset() override;
 	void Close() override;
+	void BeginEvent(UINT64 Color, const wchar_t* Name) override;
+	void EndEvent() override;
 
-	void ResourceBarrier(uint32 NumBarriers, const D3D12_RESOURCE_BARRIER* Barriers) override;
+	void SumbitResourceBarriers(uint32 NumBarriers, const ResourceBarrier* Barriers) override final;
 	void SetViewports(uint32 NumViewports, const D3D12_VIEWPORT* Viewports) override;
 	void SetScissorRects(uint32 NumRects, const D3D12_RECT* Rects) override;
 
@@ -43,17 +80,14 @@ public:
 
 	void CopyTexture(void* pData, ID3D12Resource* Dest, ID3D12Resource* UploadHeap, uint32 TextureWidth, uint32 Height, uint32 PixelSizeInBytes) override;
 
-	void BeginEvent(UINT64 Color, const wchar_t* Name) override;
-	void EndEvent() override;
-
-	ID3D12GraphicsCommandList* GetRawCommandList()
+	inline ID3D12GraphicsCommandList* GetRawCommandList()
 	{
-		return CommandList;
+		return UnderlyingCommandList();
 	}
 
-	ID3D12CommandList* GetRawCommandListBase()
+	inline ID3D12CommandList* GetRawCommandListBase()
 	{
-		return reinterpret_cast<ID3D12CommandList*>(CommandList);
+		return reinterpret_cast<ID3D12CommandList*>(UnderlyingCommandList());
 	}
 
 	friend class RRenderBackendD3D12;

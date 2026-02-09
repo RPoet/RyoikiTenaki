@@ -13,6 +13,8 @@ public:
 
 	virtual void Teardown() override;
 
-	MMesh LoadMesh(const String& Path, const String& ModelName);
+	vector<MMesh> LoadMesh(const String& Path, const String& ModelName, vector<Material>& OutMaterials);
+	vector<MMesh> LoadMeshGLTF(const String& Path, const String& ModelName, vector<Material>& OutMaterials);
+	vector<MMesh> LoadMeshFBX(const String& Path, const String& ModelName, vector<Material>& OutMaterials);
 };
 

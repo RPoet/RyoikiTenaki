@@ -12,28 +12,13 @@
 
 #include "TextureD3D12.h"
 
-/// <summary>
-/// TO DO : Remove DirectXMath here
-/// </summary>
-#include <DirectXMath.h>
-using namespace DirectX;
+#include "../../Math/SIMDMath.h"
+// using namespace SIMDMath; // Optional, or use qualified names.
+// Vector.h aliases float3/float4 to SIMDMath types.
 
 constexpr static int32 NumBackBuffers = 2;
 
-struct RSceneTextures
-{
-	SharedPtr< RRenderTargetD3D12 > SceneDepth;
-	SharedPtr< RRenderTargetD3D12 > SceneColor;
-	SharedPtr< RRenderTargetD3D12 > BaseColor;
-	SharedPtr< RRenderTargetD3D12 > WorldNormal;
-	SharedPtr< RRenderTargetD3D12 > Material;
-	SharedPtr< RRenderTargetD3D12 > DebugTexture;
-
-	D3D12_GPU_DESCRIPTOR_HANDLE GPUAddressHandle{};
-
-
-	void InitSceneTextures(RRenderBackendD3D12& Backend);
-};
+struct RSceneTextures;
 
 class RGraphicsPipeline
 {
@@ -96,13 +81,13 @@ private:
 	RCopyCommandListD3D12 CopyCommandList;
 	TRefCountPtr<ID3D12CommandQueue> CommandQueue;
 
-	RMesh RenderMesh;
+	vector<RMesh> RenderMeshes;
 	RMesh LightVolumeMesh;
-	SharedPtr<RTexture2DD3D12> DefaultTexture;
-	SharedPtr<RTexture2DD3D12> DefaultBlackTexture;
-	SharedPtr<RTexture2DD3D12> DefaultWhiteTexture;
-
-	RSceneTextures SceneTextures;
+	SharedPtr<RTextureD3D12> DefaultTexture;
+	SharedPtr<RTextureD3D12> DefaultBlackTexture;
+	SharedPtr<RTextureD3D12> DefaultWhiteTexture;
+	SharedPtr<RTextureD3D12> DefaultMetalRoughTexture;
+	SharedPtr<RTextureD3D12> BackBufferTextures[NumBackBuffers]{};
 
 	vector< RGraphicsPipeline > GraphicsPipelines;
 	// Synchronization objects.
@@ -131,6 +116,9 @@ private:
 	TRefCountPtr<RDescriptorHeap> CBVSRVHeap;
 	D3D12_GPU_DESCRIPTOR_HANDLE AddressCacheForDescriptorHeapStart[ToDescriptorIndex(EDescriptorHeapAddressSpace::Num)]{};
 	uint32 NumRegisteredHeaps[ToDescriptorIndex(EDescriptorHeapAddressSpace::Num)]{};
+	D3D12_CPU_DESCRIPTOR_HANDLE SceneTextureCPUHandle{};
+	D3D12_GPU_DESCRIPTOR_HANDLE SceneTextureGPUHandle{};
+	bool bSceneTexturesInitialized = false;
 
 	uint32 RTVDescriptorSize;
 	uint32 DSVDescriptorSize;
@@ -166,13 +154,15 @@ public:
 	{
 		return CopyCommandList;
 	}
-	RMesh* GetRenderMesh() override;
+
+	virtual vector<RMesh*> GetRenderMesh() override;
 	RMesh* GetLightVolumeMesh() override;
 
 	uint32 GetSceneRTVCount() const override;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetSceneRTVHandle(uint32 Index) override;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetSceneDepthHandle() override;
 	D3D12_GPU_DESCRIPTOR_HANDLE GetSceneTextureGPUHandle() override;
+	void InitSceneTextures(RSceneTextures& SceneTextures) override;
 
 	ID3D12DescriptorHeap* GetCBVSRVHeap() override;
 	D3D12_GPU_DESCRIPTOR_HANDLE GetDescriptorHandle(EDescriptorHeapAddressSpace AddressSpace) override;
@@ -181,10 +171,9 @@ public:
 	const D3D12_RECT* GetScissorRect() override;
 
 	RGraphicsPipeline* GetGraphicsPipeline(EGraphicsPipeline Pipeline) override;
-	ID3D12Resource* GetSceneTextureResource(ESceneTexture Texture) override;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferRTVHandle() override;
-	ID3D12Resource* GetBackBufferResource() override;
+	RTexture* GetBackBufferResource() override;
 
 	void Execute();
 	void WaitForPreviousFence();

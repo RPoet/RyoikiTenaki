@@ -1,7 +1,6 @@
 #pragma once
 #include "Module.h"
 
-// Add mouse movement
 class MInput: public MModuleBase
 {
 	MODULE_CLASS_DECORATOR(MInput)
@@ -16,6 +15,18 @@ private:
 	};
 
 	int32 Key[256]{};
+
+	int32 MouseX = 0;
+	int32 MouseY = 0;
+	int32 MouseDeltaX = 0;
+	int32 MouseDeltaY = 0;
+	int32 PrevMouseX = 0;
+	int32 PrevMouseY = 0;
+
+	bool bLeftButtonDown = false;
+	bool bRightButtonDown = false;
+	bool bMiddleButtonDown = false;
+
 public:
 
 	virtual void Init() override;
@@ -26,4 +37,13 @@ public:
 	{
 		return Key[InKey] >= KEY_DOWN;
 	}
+
+	inline bool IsLeftMouseDown() const { return bLeftButtonDown; }
+	inline bool IsRightMouseDown() const { return bRightButtonDown; }
+	inline bool IsMiddleMouseDown() const { return bMiddleButtonDown; }
+
+	inline int32 GetMouseX() const { return MouseX; }
+	inline int32 GetMouseY() const { return MouseY; }
+	inline int32 GetMouseDeltaX() const { return MouseDeltaX; }
+	inline int32 GetMouseDeltaY() const { return MouseDeltaY; }
 };

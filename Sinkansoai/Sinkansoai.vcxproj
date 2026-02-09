@@ -18,114 +18,6 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="Sources\Component.cpp" />
-    <ClCompile Include="Sources\Engine.cpp" />
-    <ClCompile Include="Sources\Engine\Mesh.cpp" />
-    <ClCompile Include="Sources\Engine\Texture.cpp" />
-    <ClCompile Include="Sources\Entities\Camera.cpp" />
-    <ClCompile Include="Sources\Entities\Components\Transform.cpp" />
-    <ClCompile Include="Sources\Entities\PlaceableEntity.cpp" />
-    <ClCompile Include="Sources\EntityComponent\ComponentManger.cpp" />
-    <ClCompile Include="Sources\EntityComponent\Entity.cpp" />
-    <ClCompile Include="Sources\EntityComponent\EntityManager.cpp" />
-    <ClCompile Include="Sources\Input.cpp" />
-    <ClCompile Include="Sources\Launcher.cpp" />
-    <ClCompile Include="Sources\Main.cpp" />
-    <ClCompile Include="Sources\Module.cpp" />
-    <ClCompile Include="Sources\Module\Mesh\MeshBuilder.cpp" />
-    <ClCompile Include="Sources\Module\ShaderCompiler\ShaderCompiler.cpp" />
-    <ClCompile Include="Sources\Module\Texture\TextureBuilder.cpp" />
-    <ClCompile Include="Sources\ObjectBase.cpp" />
-    <ClCompile Include="Sources\RenderBackend\DynamicBuffer.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderBackend.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderBackendCompute\RenderBackendCompute.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\ComputeCommandListD3D12.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\CopyCommandListD3D12.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\DynamicBufferD3D12.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\GraphicsCommandListD3D12.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\ResourceBufferD3D12.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\TextureD3D12.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderBackendSIMD\RenderBackendSIMD.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderBackendVulkan\RenderBackendVulkan.cpp" />
-    <ClCompile Include="Sources\RenderBackend\RenderCommandList.cpp" />
-    <ClCompile Include="Sources\RenderBackend\ResourceBuffer.cpp" />
-    <ClCompile Include="Sources\RenderBackend\Texture.cpp" />
-    <ClCompile Include="Sources\Render\Renderer.cpp" />
-    <ClCompile Include="Sources\Render\Scene.cpp" />
-    <ClCompile Include="Sources\SceneGraphSystem\Component.cpp" />
-    <ClCompile Include="Sources\SceneGraphSystem\GraphEntity.cpp" />
-    <ClCompile Include="Sources\SceneGraphSystem\SceneGraphSystem.cpp" />
-    <ClCompile Include="Sources\Tasks\TaskSystem.cpp" />
-    <ClCompile Include="Sources\Timer.cpp" />
-    <ClCompile Include="Sources\Windows.cpp" />
-    <ClCompile Include="Sources\World.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Sources\Algorithm.h" />
-    <ClInclude Include="Sources\Component.h" />
-    <ClInclude Include="Sources\Definitions.h" />
-    <ClInclude Include="Sources\Engine.h" />
-    <ClInclude Include="Sources\Engine\Mesh.h" />
-    <ClInclude Include="Sources\Engine\Texture.h" />
-    <ClInclude Include="Sources\Entities\Camera.h" />
-    <ClInclude Include="Sources\Entities\Components\Transform.h" />
-    <ClInclude Include="Sources\Entities\PlaceableEntity.h" />
-    <ClInclude Include="Sources\EntityComponent\ComponentManger.h" />
-    <ClInclude Include="Sources\EntityComponent\ECFCommon.h" />
-    <ClInclude Include="Sources\EntityComponent\Entity.h" />
-    <ClInclude Include="Sources\EntityComponent\EntityManager.h" />
-    <ClInclude Include="Sources\Input.h" />
-    <ClInclude Include="Sources\Launcher.h" />
-    <ClInclude Include="Sources\Misc\Geometry.h" />
-    <ClInclude Include="Sources\Misc\Matrix.h" />
-    <ClInclude Include="Sources\Module.h" />
-    <ClInclude Include="Sources\Module\Mesh\MeshBuilder.h" />
-    <ClInclude Include="Sources\Module\Mesh\TinyObjLoader.h" />
-    <ClInclude Include="Sources\Module\ShaderCompiler\ShaderCompiler.h" />
-    <ClInclude Include="Sources\Module\Texture\TextureBuilder.h" />
-    <ClInclude Include="Sources\ObjectBase.h" />
-    <ClInclude Include="Sources\PlatformDefinitions.h" />
-    <ClInclude Include="Sources\RenderBackend\DynamicBuffer.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackend.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendCommon.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendCompute\RenderBackendCompute.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\ComputeCommandListD3D12.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\CopyCommandListD3D12.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\d3dx12.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\DirectXHelper.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\DynamicBufferD3D12.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\GraphicsCommandListD3D12.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12Common.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\ResourceBufferD3D12.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\TextureD3D12.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendNull.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendSIMD\RenderBackendSIMD.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderBackendVulkan\RenderBackendVulkan.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderCommandList.h" />
-    <ClInclude Include="Sources\RenderBackend\RenderResource.h" />
-    <ClInclude Include="Sources\RenderBackend\ResourceBuffer.h" />
-    <ClInclude Include="Sources\RenderBackend\Texture.h" />
-    <ClInclude Include="Sources\Render\Renderer.h" />
-    <ClInclude Include="Sources\Render\Scene.h" />
-    <ClInclude Include="Sources\Render\View.h" />
-    <ClInclude Include="Sources\SceneGraphSystem\Component.h" />
-    <ClInclude Include="Sources\SceneGraphSystem\GraphEntity.h" />
-    <ClInclude Include="Sources\SceneGraphSystem\SceneGraphSystem.h" />
-    <ClInclude Include="Sources\Singleton.h" />
-    <ClInclude Include="Sources\Tasks\TaskQueue.h" />
-    <ClInclude Include="Sources\Tasks\TaskQueue.hpp" />
-    <ClInclude Include="Sources\Tasks\TaskSystem.h" />
-    <ClInclude Include="Sources\Timer.h" />
-    <ClInclude Include="Sources\Vector.h" />
-    <ClInclude Include="Sources\Windows.h" />
-    <ClInclude Include="Sources\World.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -184,6 +76,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>Sources\ThirdParty\ImGui;Sources\ThirdParty\ImGui\backends;Sources\ThirdParty\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -198,6 +92,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>Sources\ThirdParty\ImGui;Sources\ThirdParty\ImGui\backends;Sources\ThirdParty\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -212,6 +108,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>Sources\ThirdParty\ImGui;Sources\ThirdParty\ImGui\backends;Sources\ThirdParty\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -226,6 +124,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>Sources\ThirdParty\ImGui;Sources\ThirdParty\ImGui\backends;Sources\ThirdParty\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -234,6 +134,146 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Sources\Algorithm.h" /> <!-- Wait, .h in ClCompile? No, only .cpp -->
+    <ClCompile Include="Sources\Component.cpp" />
+    <ClCompile Include="Sources\Engine.cpp" />
+    <ClCompile Include="Sources\Engine\Mesh.cpp" />
+    <ClCompile Include="Sources\Engine\Texture.cpp" />
+    <ClCompile Include="Sources\Entities\Camera.cpp" />
+    <ClCompile Include="Sources\Entities\Components\Transform.cpp" />
+    <ClCompile Include="Sources\Entities\PlaceableEntity.cpp" />
+    <ClCompile Include="Sources\EntityComponent\ComponentManger.cpp" />
+    <ClCompile Include="Sources\EntityComponent\Entity.cpp" />
+    <ClCompile Include="Sources\EntityComponent\EntityManager.cpp" />
+    <ClCompile Include="Sources\Input.cpp" />
+    <ClCompile Include="Sources\Launcher.cpp" />
+    <ClCompile Include="Sources\Main.cpp" />
+    <ClCompile Include="Sources\Module.cpp" />
+    <ClCompile Include="Sources\Module\EditorUI\EditorUI.cpp" />
+    <ClCompile Include="Sources\Module\Mesh\MeshBuilder.cpp" />
+    <ClCompile Include="Sources\Module\Mesh\MeshBuilderGLTF.cpp" />
+    <ClCompile Include="Sources\Module\Mesh\ThirdParty\OpenFBX\ofbx.cpp" />
+    <ClCompile Include="Sources\Module\Mesh\ThirdParty\OpenFBX\lib\deflate_decompress.c" />
+    <ClCompile Include="Sources\Module\Mesh\ThirdParty\OpenFBX\lib\utils.c" />
+    <ClCompile Include="Sources\Module\Mesh\ThirdParty\OpenFBX\lib\x86\cpu_features.c" />
+    <ClCompile Include="Sources\Module\ShaderCompiler\ShaderCompiler.cpp" />
+    <ClCompile Include="Sources\Module\Texture\TextureBuilder.cpp" />
+    <ClCompile Include="Sources\ObjectBase.cpp" />
+    <ClCompile Include="Sources\RenderBackend\DynamicBuffer.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackend.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackendCompute\RenderBackendCompute.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\ComputeCommandListD3D12.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\CopyCommandListD3D12.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\DynamicBufferD3D12.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\GraphicsCommandListD3D12.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\ResourceBufferD3D12.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackendD3D12\TextureD3D12.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackendSIMD\RenderBackendSIMD.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderBackendVulkan\RenderBackendVulkan.cpp" />
+    <ClCompile Include="Sources\RenderBackend\RenderCommandList.cpp" />
+    <ClCompile Include="Sources\RenderBackend\ResourceBuffer.cpp" />
+    <ClCompile Include="Sources\RenderBackend\Texture.cpp" />
+    <ClCompile Include="Sources\Render\MaterialRegistry.cpp" />
+    <ClCompile Include="Sources\Render\Renderer.cpp" />
+    <ClCompile Include="Sources\Render\Scene.cpp" />
+    <ClCompile Include="Sources\SceneGraphSystem\Component.cpp" />
+    <ClCompile Include="Sources\SceneGraphSystem\GraphEntity.cpp" />
+    <ClCompile Include="Sources\SceneGraphSystem\SceneGraphSystem.cpp" />
+    <ClCompile Include="Sources\SceneSelection.cpp" />
+    <ClCompile Include="Sources\ThirdParty\ImGui\backends\imgui_impl_dx12.cpp" />
+    <ClCompile Include="Sources\ThirdParty\ImGui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="Sources\ThirdParty\ImGui\imgui.cpp" />
+    <ClCompile Include="Sources\ThirdParty\ImGui\imgui_demo.cpp" />
+    <ClCompile Include="Sources\ThirdParty\ImGui\imgui_draw.cpp" />
+    <ClCompile Include="Sources\ThirdParty\ImGui\imgui_tables.cpp" />
+    <ClCompile Include="Sources\ThirdParty\ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="Sources\Tasks\TaskSystem.cpp" />
+    <ClCompile Include="Sources\Timer.cpp" />
+    <ClCompile Include="Sources\Windows.cpp" />
+    <ClCompile Include="Sources\World.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Sources\Algorithm.h" />
+    <ClInclude Include="Sources\Component.h" />
+    <ClInclude Include="Sources\Definitions.h" />
+    <ClInclude Include="Sources\Engine.h" />
+    <ClInclude Include="Sources\Engine\Mesh.h" />
+    <ClInclude Include="Sources\Engine\Texture.h" />
+    <ClInclude Include="Sources\Entities\Camera.h" />
+    <ClInclude Include="Sources\Entities\Components\Transform.h" />
+    <ClInclude Include="Sources\Entities\PlaceableEntity.h" />
+    <ClInclude Include="Sources\EntityComponent\ComponentManger.h" />
+    <ClInclude Include="Sources\EntityComponent\ECFCommon.h" />
+    <ClInclude Include="Sources\EntityComponent\Entity.h" />
+    <ClInclude Include="Sources\EntityComponent\EntityManager.h" />
+    <ClInclude Include="Sources\Input.h" />
+    <ClInclude Include="Sources\Launcher.h" />
+    <ClInclude Include="Sources\Math\SIMDMath.h" />
+    <ClInclude Include="Sources\Misc\Geometry.h" />
+    <ClInclude Include="Sources\Misc\Matrix.h" />
+    <ClInclude Include="Sources\Module.h" />
+    <ClInclude Include="Sources\Module\EditorUI\EditorUI.h" />
+    <ClInclude Include="Sources\Module\Mesh\MeshBuilder.h" />
+    <ClInclude Include="Sources\Module\Mesh\stb_image.h" />
+    <ClInclude Include="Sources\Module\Mesh\tiny_gltf.h" />
+    <ClInclude Include="Sources\Module\Mesh\TinyObjLoader.h" />
+    <ClInclude Include="Sources\Module\ShaderCompiler\ShaderCompiler.h" />
+    <ClInclude Include="Sources\Module\Texture\TextureBuilder.h" />
+    <ClInclude Include="Sources\Module\Texture\TGALoader.h" />
+    <ClInclude Include="Sources\ObjectBase.h" />
+    <ClInclude Include="Sources\PlatformDefinitions.h" />
+    <ClInclude Include="Sources\RenderBackend\DynamicBuffer.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackend.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendCommon.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendCompute\RenderBackendCompute.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\ComputeCommandListD3D12.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\CopyCommandListD3D12.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\d3dx12.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\DirectXHelper.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\DynamicBufferD3D12.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\GraphicsCommandListD3D12.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\RenderBackendD3D12Common.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\ResourceBufferD3D12.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendD3D12\TextureD3D12.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendNull.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendSIMD\RenderBackendSIMD.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderBackendVulkan\RenderBackendVulkan.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderCommandList.h" />
+    <ClInclude Include="Sources\RenderBackend\RenderResource.h" />
+    <ClInclude Include="Sources\RenderBackend\ResourceBuffer.h" />
+    <ClInclude Include="Sources\RenderBackend\Texture.h" />
+    <ClInclude Include="Sources\Render\MaterialRegistry.h" />
+    <ClInclude Include="Sources\Render\Renderer.h" />
+    <ClInclude Include="Sources\Render\Scene.h" />
+    <ClInclude Include="Sources\Render\View.h" />
+    <ClInclude Include="Sources\SceneGraphSystem\Component.h" />
+    <ClInclude Include="Sources\SceneGraphSystem\GraphEntity.h" />
+    <ClInclude Include="Sources\SceneGraphSystem\SceneGraphSystem.h" />
+    <ClInclude Include="Sources\SceneSelection.h" />
+    <ClInclude Include="Sources\ThirdParty\ImGui\backends\imgui_impl_dx12.h" />
+    <ClInclude Include="Sources\ThirdParty\ImGui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="Sources\ThirdParty\ImGui\imconfig.h" />
+    <ClInclude Include="Sources\ThirdParty\ImGui\imgui.h" />
+    <ClInclude Include="Sources\ThirdParty\ImGui\imgui_internal.h" />
+    <ClInclude Include="Sources\ThirdParty\ImGui\imstb_rectpack.h" />
+    <ClInclude Include="Sources\ThirdParty\ImGui\imstb_textedit.h" />
+    <ClInclude Include="Sources\ThirdParty\ImGui\imstb_truetype.h" />
+    <ClInclude Include="Sources\ThirdParty\json\json.hpp" />
+    <ClInclude Include="Sources\Singleton.h" />
+    <ClInclude Include="Sources\Tasks\TaskQueue.h" />
+    <ClInclude Include="Sources\Tasks\TaskQueue.hpp" />
+    <ClInclude Include="Sources\Tasks\TaskSystem.h" />
+    <ClInclude Include="Sources\Timer.h" />
+    <ClInclude Include="Sources\Vector.h" />
+    <ClInclude Include="Sources\Windows.h" />
+    <ClInclude Include="Sources\World.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets" Condition="Exists('..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" />

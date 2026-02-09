@@ -31,7 +31,7 @@ PSInput VSMain(float3 Position : POSITION
 #endif
 
 void PSMain( in PSInput In,
-			out float4 SceneColor  : SV_TARGET0 )
+			out float4 OutSceneColor  : SV_TARGET0 )
 { 
 	float3 SVPosition = In.Position.xyz;
 	float2 BufferUV = (In.Position.xy + 0.5f) * rcp(ViewRect);
@@ -40,6 +40,7 @@ void PSMain( in PSInput In,
 	float4 BaseColor = BaseColorTexture[PixelPosition];
 	float4 GBuffer0 = WorldNormalTexture[PixelPosition];
 	float4 WorldPosition = MaterialTexture[PixelPosition].xyzw;
+	float3 Emissive = SceneColor[PixelPosition].xyz;
 	float3 ViewPosition = ViewTranslation.xyz - WorldPosition.xyz;
 
 	float3 WorldNormal = normalize( GBuffer0.xyz * 2.0f - 1.0f );
@@ -59,5 +60,5 @@ void PSMain( in PSInput In,
 #else
 	float3 Lighting = CalcDirectionalLight( DirectionalLight, WorldNormal, normalize(ViewPosition), BaseColor.xyz ); 
 #endif
-	SceneColor = float4( Lighting, 1);
+	OutSceneColor = float4( Lighting + Emissive, 1);
 }

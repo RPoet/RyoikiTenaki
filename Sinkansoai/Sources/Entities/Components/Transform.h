@@ -46,43 +46,48 @@ public:
 		bIsDirty = true;
 	}
 
+	// Using SIMDMath types (aliased in Vector.h or used directly)
+    // Assuming float3/float4 map to SIMDMath::Vector3/4 or we use them directly.
+    // Given my update to Vector.h, float3 should be SIMDMath::Vector3.
+    
 	float3 TransformPoint(float3 V)
 	{
-		auto Point = DirectX::XMVector3Transform(DirectX::XMVectorSet(V.x, V.y, V.z, 1), ToMatrix());
-		float3 Out{};
-		DirectX::XMStoreFloat3(&Out, Point);
-		return Out;
+        // Transform point (w=1)
+        return SIMDMath::TransformPoint(V, ToMatrix());
 	}
 
 	float3 TransformVector(float3 V)
 	{
-		auto Vec = DirectX::XMVector3Transform(DirectX::XMVectorSet(V.x, V.y, V.z, 0), ToMatrix());
-		float3 Out{};
-		DirectX::XMStoreFloat3(&Out, Vec);
-		return Out;
+        // Transform vector (w=0)
+        return SIMDMath::TransformVector(V, ToMatrix());
 	}
 
-	float3 GetDirection()
+	float3 GetDirection() const
 	{
-		return TransformVector({ 0, 0, 1 });
+		return const_cast<MTransform*>(this)->TransformVector({0, 0, 1});
 	}
 
-	XMMATRIX& ToMatrix()
+	float4x4& ToMatrix()
 	{
-		// fix dirty flag and make all those member variables as private to use dirty flag.
-		auto RotationM = DirectX::XMMatrixRotationRollPitchYaw(DirectX::XMConvertToRadians( Rotation.x ), DirectX::XMConvertToRadians(Rotation.y), DirectX::XMConvertToRadians(Rotation.z));
-		auto ScaleM = DirectX::XMMatrixScaling(Scale.x, Scale.y, Scale.z);
-		auto TranslationM = DirectX::XMMatrixTranslation(Position.x, Position.y, Position.z);
+        if (bIsDirty)
+        {
+		    auto RotationM = SIMDMath::Matrix4x4::RotationRollPitchYaw(
+                Rotation.x * SIMDMath::DegToRad, 
+                Rotation.y * SIMDMath::DegToRad, 
+                Rotation.z * SIMDMath::DegToRad
+            );
+		    auto ScaleM = SIMDMath::Matrix4x4::Scale(Scale.x, Scale.y, Scale.z);
+		    auto TranslationM = SIMDMath::Matrix4x4::Translation(Position.x, Position.y, Position.z);
 
-		LocalToWorld = TranslationM * RotationM * ScaleM;
-
+            // Correct order: Scale * Rotation * Translation
+		    LocalToWorld = ScaleM * RotationM * TranslationM;
+            bIsDirty = false;
+        }
 		return LocalToWorld;
 	}
 
 	float4x4 GetLocalToWorld()
 	{
-		float4x4 Out;
-		DirectX::XMStoreFloat4x4(&Out, ToMatrix());
-		return Out;
+		return ToMatrix();
 	}
 };

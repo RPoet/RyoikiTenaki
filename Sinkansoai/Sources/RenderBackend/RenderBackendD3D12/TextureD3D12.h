@@ -4,50 +4,38 @@
 
 class RRenderBackendD3D12;
 
-class RUnderlyingResourceD3D12
+class RTextureD3D12 : public RTexture
 {
 protected:
 	TRefCountPtr<ID3D12Resource> UnderlyingResource{};
 
-
-public:
-	RUnderlyingResourceD3D12() = default;
-	virtual ~RUnderlyingResourceD3D12() = default;
-
-	ID3D12Resource* GetUnderlyingResource() const
-	{
-		return UnderlyingResource.Get();
-	}
-
-	D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const
-	{
-		return UnderlyingResource->GetGPUVirtualAddress();
-	}
-};
-
-
-class RTextureD3D12 : public RTexture, public RUnderlyingResourceD3D12
-{
-protected:
 	RRenderBackendD3D12& Backend;
 	D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc;
 	DXGI_FORMAT Format;
 	EResourceFlag Flag;
+	EResourceType ResourceType;
+	bool bRTVGenerated = false;
+	D3D12_CPU_DESCRIPTOR_HANDLE DescriptorAddress{};
 
 public:
 
-	RTextureD3D12(RRenderBackendD3D12& Backend, const String& Name, uint32 Width, uint32 Height, uint32 NumMips, DXGI_FORMAT Format, EResourceFlag Flag = EResourceFlag::None)
+	RTextureD3D12(RRenderBackendD3D12& Backend, const String& Name, uint32 Width, uint32 Height, uint32 NumMips, DXGI_FORMAT Format, EResourceFlag Flag = EResourceFlag::None, EResourceType ResourceType = EResourceType::Texture2D)
 		: RTexture(Name)
-		, RUnderlyingResourceD3D12()
 		, Backend(Backend)
 		, SRVDesc{}
 		, Format(Format)
 		, Flag(Flag)
+		, ResourceType(ResourceType)
 	{
 		this->Width = Width;
 		this->Height = Height;
 		this->NumMips = NumMips;
 		this->PixelSizeInBytes = GetPerFormatPixelSizeInBytes(Format);
+
+		SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		SRVDesc.Format = Format;
+		SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		SRVDesc.Texture2D.MipLevels = NumMips;
 	}
 
 	const D3D12_SHADER_RESOURCE_VIEW_DESC& GetSRVDesc() const
@@ -55,46 +43,34 @@ public:
 		return SRVDesc;
 	}
 
-
 	virtual void SetSRVFormat(DXGI_FORMAT Format)
 	{
 		SRVDesc.Format = Format;
 	}
 
-	friend class RRenderBackendD3D12;
-};
-
-class RTexture2DD3D12 : public RTextureD3D12
-{
-private:
-
-public:
-	RTexture2DD3D12(RRenderBackendD3D12& Backend, const String& Name, uint32 Width, uint32 Height, uint32 NumMips, DXGI_FORMAT Format, EResourceFlag Flag = EResourceFlag::None)
-		: RTextureD3D12(Backend, Name, Width, Height, NumMips, Format, Flag)
-	{}
-
 	virtual void AllocateResource() override;
-
 	virtual void StreamTexture(void* pData) override;
 
-	friend class RRenderBackendD3D12;
-};
+	void SetUnderlyingResource(ID3D12Resource* Resource)
+	{
+		UnderlyingResource = Resource;
+		bInitialized = (Resource != nullptr);
+	}
 
-class RRenderTargetD3D12 : public RTextureD3D12
-{
-private:
-	bool bRTVGenerated;
-	D3D12_CPU_DESCRIPTOR_HANDLE DescriptorAddress;
+	const void* GetUnderlyingResource() const override final
+	{
+		return reinterpret_cast<void*>(UnderlyingResource.Get());
+	}
+	
+	void* GetUnderlyingResource() override final
+	{
+		return reinterpret_cast<void*>(UnderlyingResource.Get());
+	}
 
-public:
-
-	RRenderTargetD3D12(RRenderBackendD3D12& Backend, const String& Name, uint32 Width, uint32 Height, uint32 NumMips, DXGI_FORMAT Format, EResourceFlag Flag = EResourceFlag::None)
-		: RTextureD3D12(Backend, Name, Width, Height, NumMips, Format, Flag)
-		, bRTVGenerated(false)
-		, DescriptorAddress()
-	{}
-
-	virtual void AllocateResource() override;
+	D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const
+	{
+		return UnderlyingResource->GetGPUVirtualAddress();
+	}
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorAddress() const
 	{
@@ -103,4 +79,6 @@ public:
 	}
 
 	void CreateRTV(D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor);
+
+	friend class RRenderBackendD3D12;
 };

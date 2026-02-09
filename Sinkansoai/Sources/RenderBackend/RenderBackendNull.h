@@ -45,7 +45,7 @@ public:
 	void Reset() override {}
 	void Close() override {}
 
-	void ResourceBarrier(uint32, const D3D12_RESOURCE_BARRIER*) override {}
+	void SumbitResourceBarriers(uint32, const ResourceBarrier*) override {}
 	void SetViewports(uint32, const D3D12_VIEWPORT*) override {}
 	void SetScissorRects(uint32, const D3D12_RECT*) override {}
 
@@ -78,7 +78,7 @@ public:
 	void Reset() override {}
 	void Close() override {}
 
-	void ResourceBarrier(uint32, const D3D12_RESOURCE_BARRIER*) override {}
+	void SumbitResourceBarriers(uint32, const ResourceBarrier*) override {}
 	void SetDescriptorHeaps(uint32, ID3D12DescriptorHeap* const*) override {}
 	void SetComputeRootDescriptorTable(uint32, D3D12_GPU_DESCRIPTOR_HANDLE) override {}
 	void SetComputeRoot32BitConstants(uint32, uint32, const void*, uint32) override {}
@@ -95,7 +95,7 @@ public:
 	void Reset() override {}
 	void Close() override {}
 
-	void ResourceBarrier(uint32, const D3D12_RESOURCE_BARRIER*) override {}
+	void SumbitResourceBarriers(uint32, const ResourceBarrier*) override {}
 	void CopyBufferRegion(ID3D12Resource*, UINT64, ID3D12Resource*, UINT64, UINT64) override {}
 	void CopyTexture(void*, ID3D12Resource*, ID3D12Resource*, uint32, uint32, uint32) override {}
 

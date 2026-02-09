@@ -11,6 +11,15 @@ void MInput::Init()
 	{
 		Key[i] = KEY_UP;
 	}
+
+	POINT pt;
+	if (GetCursorPos(&pt))
+	{
+		MouseX = pt.x;
+		MouseY = pt.y;
+		PrevMouseX = pt.x;
+		PrevMouseY = pt.y;
+	}
 }
 
 
@@ -69,6 +78,23 @@ void MInput::Update()
 			}
 		}
 	}
+
+	PrevMouseX = MouseX;
+	PrevMouseY = MouseY;
+
+	POINT pt;
+	if (GetCursorPos(&pt))
+	{
+		MouseX = pt.x;
+		MouseY = pt.y;
+	}
+
+	MouseDeltaX = MouseX - PrevMouseX;
+	MouseDeltaY = MouseY - PrevMouseY;
+
+	bLeftButtonDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+	bRightButtonDown = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+	bMiddleButtonDown = (GetAsyncKeyState(VK_MBUTTON) & 0x8000) != 0;
 }
 
 

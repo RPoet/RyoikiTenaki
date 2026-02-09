@@ -1,4 +1,5 @@
 #pragma once
+#include "View.h"
 
 class RScene
 {
@@ -8,6 +9,7 @@ private:
 
 	float DeltaTime{};
 	float WorldTime{};
+	RLightData LightData{};
 
 public:
 	RScene() = default;
@@ -28,6 +30,16 @@ public:
 	float GetWorldTime() const
 	{
 		return WorldTime;
+	}
+
+	void SetLightData(const RLightData& InLightData)
+	{
+		LightData = InLightData;
+	}
+
+	const RLightData& GetLightData() const
+	{
+		return LightData;
 	}
 };
 

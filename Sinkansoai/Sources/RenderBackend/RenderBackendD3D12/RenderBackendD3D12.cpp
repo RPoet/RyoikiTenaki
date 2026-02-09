@@ -4,8 +4,13 @@
 #include "../../Module/Mesh/MeshBuilder.h"
 #include "../../Module/Texture/TextureBuilder.h"
 #include "../../Module/ShaderCompiler/ShaderCompiler.h"
+#include "../../SceneSelection.h"
 
 #include "RenderBackendD3D12.h"
+#include "../../Render/SceneTextures.h"
+#include "../../Render/MaterialRegistry.h"
+
+#include <string>
 
 #pragma comment ( lib, "d3d12.lib")
 #pragma comment ( lib, "dxgi.lib")
@@ -63,26 +68,109 @@ static String GetLatestWinPixGpuCapturerPath()
 }
 
 
-void RSceneTextures::InitSceneTextures(RRenderBackendD3D12& Backend)
+void RRenderBackendD3D12::InitSceneTextures(RSceneTextures& SceneTextures)
 {
-	SceneDepth = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("MainDepthStencil"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R32G8X24_TYPELESS, EResourceFlag::DepthStencilTarget));
-	SceneDepth->AllocateResource();
-	SceneDepth->SetSRVFormat(DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS); // Refactoring this as Depth Stencil Target.
+	if (bSceneTexturesInitialized)
+	{
+		return;
+	}
 
-	SceneColor = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("SceneColor"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget));
-	SceneColor->AllocateResource();
+	if (!Device || !SceneTextureRTVHeap || !DSVHeap || !CBVSRVHeap)
+	{
+		return;
+	}
+	if (SceneTextureCPUHandle.ptr == 0)
+	{
+		return;
+	}
 
-	BaseColor = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("BaseColor"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget));
-	BaseColor->AllocateResource();
+	const uint32 Width = MWindow::Get().GetWidth();
+	const uint32 Height = MWindow::Get().GetHeight();
 
-	WorldNormal = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("WorldNormal"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget));
-	WorldNormal->AllocateResource();
+	auto MakeSceneTexture = [&](const wchar_t* Name, DXGI_FORMAT Format, EResourceFlag Flag)
+	{
+		return SharedPtr<RTextureD3D12>(new RTextureD3D12(*this, Name, Width, Height, 1, Format, Flag, EResourceType::RenderTexture2D));
+	};
 
-	Material = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("Material"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R32G32B32A32_FLOAT, EResourceFlag::RenderTarget));
-	Material->AllocateResource();
+	SceneTextures.SceneDepth = MakeSceneTexture(TEXT("MainDepthStencil"), DXGI_FORMAT_R32G8X24_TYPELESS, EResourceFlag::DepthStencilTarget);
+	SceneTextures.SceneDepth->AllocateResource();
+	CastAsD3D12<RTextureD3D12>(SceneTextures.SceneDepth.get())->SetSRVFormat(DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS);
 
-	DebugTexture = SharedPtr<RRenderTargetD3D12>(new RRenderTargetD3D12(Backend, TEXT("DebugTexture"), MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R32G32B32A32_FLOAT, EResourceFlag::RenderTarget));
-	DebugTexture->AllocateResource();
+	SceneTextures.SceneColor = MakeSceneTexture(TEXT("SceneColor"), DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget);
+	SceneTextures.SceneColor->AllocateResource();
+
+	SceneTextures.BaseColor = MakeSceneTexture(TEXT("BaseColor"), DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget);
+	SceneTextures.BaseColor->AllocateResource();
+
+	SceneTextures.WorldNormal = MakeSceneTexture(TEXT("WorldNormal"), DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget);
+	SceneTextures.WorldNormal->AllocateResource();
+
+	SceneTextures.Material = MakeSceneTexture(TEXT("Material"), DXGI_FORMAT_R32G32B32A32_FLOAT, EResourceFlag::RenderTarget);
+	SceneTextures.Material->AllocateResource();
+
+	SceneTextures.DebugTexture = MakeSceneTexture(TEXT("DebugTexture"), DXGI_FORMAT_R32G32B32A32_FLOAT, EResourceFlag::RenderTarget);
+	SceneTextures.DebugTexture->AllocateResource();
+
+	// DSV
+	{
+		D3D12_DEPTH_STENCIL_VIEW_DESC DepthStencilViewDesc{};
+		DepthStencilViewDesc.Format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+		DepthStencilViewDesc.Flags = D3D12_DSV_FLAG_NONE;
+		DepthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		Device->CreateDepthStencilView(ToD3D12Resource(SceneTextures.SceneDepth.get()), &DepthStencilViewDesc, DSVHeap->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	// RTVs
+	{
+		CD3DX12_CPU_DESCRIPTOR_HANDLE RTVHandle(SceneTextureRTVHeap->GetCPUDescriptorHandleForHeapStart());
+		CastAsD3D12<RTextureD3D12>(SceneTextures.SceneColor.get())->CreateRTV(RTVHandle);
+		RTVHandle.Offset(1, RTVDescriptorSize);
+
+		CastAsD3D12<RTextureD3D12>(SceneTextures.BaseColor.get())->CreateRTV(RTVHandle);
+		RTVHandle.Offset(1, RTVDescriptorSize);
+
+		CastAsD3D12<RTextureD3D12>(SceneTextures.WorldNormal.get())->CreateRTV(RTVHandle);
+		RTVHandle.Offset(1, RTVDescriptorSize);
+
+		CastAsD3D12<RTextureD3D12>(SceneTextures.Material.get())->CreateRTV(RTVHandle);
+		RTVHandle.Offset(1, RTVDescriptorSize);
+
+		CastAsD3D12<RTextureD3D12>(SceneTextures.DebugTexture.get())->CreateRTV(RTVHandle);
+	}
+
+	// SRVs
+	{
+		CD3DX12_CPU_DESCRIPTOR_HANDLE SRVHandle(SceneTextureCPUHandle);
+
+		auto CreateSceneSRV = [&](RTexture* Texture)
+		{
+			auto* D3D12Texture = CastAsD3D12<RTextureD3D12>(Texture);
+			Device->CreateShaderResourceView(ToD3D12Resource(Texture), &D3D12Texture->GetSRVDesc(), SRVHandle);
+			SRVHandle.Offset(1, CBVSRVUAVDescriptorSize);
+		};
+
+		CreateSceneSRV(SceneTextures.SceneDepth.get());
+		CreateSceneSRV(SceneTextures.SceneColor.get());
+		CreateSceneSRV(SceneTextures.BaseColor.get());
+		CreateSceneSRV(SceneTextures.WorldNormal.get());
+		CreateSceneSRV(SceneTextures.Material.get());
+	}
+
+	// Initialize resource states to match renderer expectations.
+	{
+		ResourceBarrier Barriers[] =
+		{
+			MakeTransitionBarrier(SceneTextures.SceneDepth.get(), ResourceState::Common, ResourceState::DepthRead),
+			MakeTransitionBarrier(SceneTextures.SceneColor.get(), ResourceState::Common, ResourceState::GenericRead),
+			MakeTransitionBarrier(SceneTextures.BaseColor.get(), ResourceState::Common, ResourceState::GenericRead),
+			MakeTransitionBarrier(SceneTextures.WorldNormal.get(), ResourceState::Common, ResourceState::GenericRead),
+			MakeTransitionBarrier(SceneTextures.Material.get(), ResourceState::Common, ResourceState::GenericRead),
+			MakeTransitionBarrier(SceneTextures.DebugTexture.get(), ResourceState::Common, ResourceState::RenderTarget),
+		};
+		GraphicsCommandList.SumbitResourceBarriers(_countof(Barriers), Barriers);
+	}
+
+	bSceneTexturesInitialized = true;
 }
 
 RRenderBackendD3D12::RRenderBackendD3D12()
@@ -200,18 +288,25 @@ void RRenderBackendD3D12::Init()
 		}
 
 		{
-			MMesh LightVolume = MMeshBuilder::Get().LoadMesh(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Resources/LightVolume/"), TEXT("Sphere.obj"));
-
-			LightVolumeMesh.InitResources(LightVolume,
-				[&](RVertexBuffer*& PositionVB, RVertexBuffer*& UVVB, RVertexBuffer*& NormalVB, RVertexBuffer*& TangetVB, RVertexBuffer*& BitangetVB, RIndexBuffer*& IB)
-				{
-					PositionVB = new RVertexBufferD3D12(*this, TEXT("PositionVertexBuffer"));
-					UVVB = new RVertexBufferD3D12(*this, TEXT("UVVertexBuffer"));
-					NormalVB = new RVertexBufferD3D12(*this, TEXT("NormalVertexBuffer"));
-					TangetVB = new RVertexBufferD3D12(*this, TEXT("TangentVertexBuffer"));
-					BitangetVB = new RVertexBufferD3D12(*this, TEXT("BitangentVertexBuffer"));
-					IB = new RIndexBufferD3D12(*this, TEXT("IndexBuffer"));
-				});
+			vector<Material> LightVolumeMaterials;
+			auto LightVolumeMeshes = MMeshBuilder::Get().LoadMesh(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Resources/LightVolume/"), TEXT("Sphere.obj"), LightVolumeMaterials);
+			if (!LightVolumeMeshes.empty())
+			{
+				LightVolumeMesh.InitResources(LightVolumeMeshes[0],
+					[&](RVertexBuffer*& PositionVB, vector<RVertexBuffer*>& UVVBs, RVertexBuffer*& NormalVB, RVertexBuffer*& TangetVB, RVertexBuffer*& BitangetVB, RIndexBuffer*& IB, uint32 NumUVChannels)
+					{
+						PositionVB = new RVertexBufferD3D12(*this, TEXT("PositionVertexBuffer"));
+						UVVBs.resize(NumUVChannels);
+						for (uint32 ChannelIndex = 0; ChannelIndex < NumUVChannels; ++ChannelIndex)
+						{
+							UVVBs[ChannelIndex] = new RVertexBufferD3D12(*this, TEXT("UVVertexBuffer"));
+						}
+						NormalVB = new RVertexBufferD3D12(*this, TEXT("NormalVertexBuffer"));
+						TangetVB = new RVertexBufferD3D12(*this, TEXT("TangentVertexBuffer"));
+						BitangetVB = new RVertexBufferD3D12(*this, TEXT("BitangentVertexBuffer"));
+						IB = new RIndexBufferD3D12(*this, TEXT("IndexBuffer"));
+					});
+			}
 
 		}
 
@@ -219,29 +314,21 @@ void RRenderBackendD3D12::Init()
 
 		// Create testing resources
 		{
-			MMesh Mesh = MMeshBuilder::Get().LoadMesh(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Resources/sponza/"), TEXT("sponza.obj"));
-
-			RenderMesh.InitResources(Mesh,
-				[&](RVertexBuffer*& PositionVB, RVertexBuffer*& UVVB, RVertexBuffer*& NormalVB, RVertexBuffer*& TangetVB, RVertexBuffer*& BitangetVB, RIndexBuffer*& IB)
-				{
-					PositionVB = new RVertexBufferD3D12(*this, TEXT("PositionVertexBuffer"));
-					UVVB = new RVertexBufferD3D12(*this, TEXT("UVVertexBuffer"));
-					NormalVB = new RVertexBufferD3D12(*this, TEXT("NormalVertexBuffer"));
-					TangetVB = new RVertexBufferD3D12(*this, TEXT("TangentVertexBuffer"));
-					BitangetVB = new RVertexBufferD3D12(*this, TEXT("BitangentVertexBuffer"));
-					IB = new RIndexBufferD3D12(*this, TEXT("IndexBuffer"));
-				});
-
-			RenderMesh.InitMaterials(Mesh.Materials,
-				[&](SharedPtr< RTexture >& Resource, MTexture& RawTexture)
-				{
-					Resource = SharedPtr<RTexture2DD3D12>(new RTexture2DD3D12(*this, RawTexture.Name, RawTexture.Width, RawTexture.Height, 1, DXGI_FORMAT_B8G8R8A8_UNORM, EResourceFlag::None));
-
-					Resource->AllocateResource();
-					Resource->StreamTexture(RawTexture.Pixels.data());
-				});
-
-
+			const auto& SelectedScene = GetSelectedSceneAsset();
+			vector<MMesh> LoadedMeshes;
+			vector<Material> LoadedMaterials;
+			if (SelectedScene.Type == ESceneAssetType::Gltf)
+			{
+				LoadedMeshes = MMeshBuilder::Get().LoadMeshGLTF(SelectedScene.RootPath, SelectedScene.FileName, LoadedMaterials);
+			}
+			else if (SelectedScene.Type == ESceneAssetType::Fbx)
+			{
+				LoadedMeshes = MMeshBuilder::Get().LoadMeshFBX(SelectedScene.RootPath, SelectedScene.FileName, LoadedMaterials);
+			}
+			else
+			{
+				LoadedMeshes = MMeshBuilder::Get().LoadMesh(SelectedScene.RootPath, SelectedScene.FileName, LoadedMaterials);
+			}
 
 
 			for (auto& DynamicBuffer : DynamicBuffers)
@@ -249,11 +336,9 @@ void RRenderBackendD3D12::Init()
 				DynamicBuffer.Allocate(D3D12MaxConstantBufferSize);
 			}
 
-			SceneTextures.InitSceneTextures(*this);
-
 			// Default Texture
 			{
-				DefaultTexture = SharedPtr<RTexture2DD3D12>(new RTexture2DD3D12(*this, TEXT("CheckerTexture"), 256, 256, 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::None));
+				DefaultTexture = SharedPtr<RTextureD3D12>(new RTextureD3D12(*this, TEXT("CheckerTexture"), 256, 256, 1, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, EResourceFlag::None));
 				DefaultTexture->AllocateResource();
 
 				auto RawTexture = MTextureBuilder::Get().GenerateDefaultTexture(256, 256, 4);
@@ -262,14 +347,93 @@ void RRenderBackendD3D12::Init()
 
 			// Default Black
 			{
-				DefaultBlackTexture = SharedPtr<RTexture2DD3D12>(new RTexture2DD3D12(*this, TEXT("BlackDummy"), 1, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::None));
+				DefaultBlackTexture = SharedPtr<RTextureD3D12>(new RTextureD3D12(*this, TEXT("BlackDummy"), 1, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::None));
 				DefaultBlackTexture->AllocateResource();
 
 				vector<uint8> BlackDummy;
 				BlackDummy.resize(4);
 				DefaultBlackTexture->StreamTexture(BlackDummy.data());
 			}
+			// Default White
+			{
+				DefaultWhiteTexture = SharedPtr<RTextureD3D12>(new RTextureD3D12(*this, TEXT("WhiteDummy"), 1, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::None));
+				DefaultWhiteTexture->AllocateResource();
+
+				vector<uint8> WhiteDummy = { 255, 255, 255, 255 };
+				DefaultWhiteTexture->StreamTexture(WhiteDummy.data());
+			}
+			// Default MetallicRoughness (Metallic=0, Roughness=1)
+			{
+				DefaultMetalRoughTexture = SharedPtr<RTextureD3D12>(new RTextureD3D12(*this, TEXT("DefaultMetalRough"), 1, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::None));
+				DefaultMetalRoughTexture->AllocateResource();
+
+				vector<uint8> MetalRoughDummy = { 0, 255, 0, 255 };
+				DefaultMetalRoughTexture->StreamTexture(MetalRoughDummy.data());
+			}
 			cout << " Test resource creation done " << endl;
+
+
+			// TO DO : Move MaterialRegistry to the world and separate texture generation by using texture handle
+			// MaterialRegistry must have texture handle and the actual creation of texture should be done other place not in here.
+			auto& Registry = MaterialRegistry::Get();
+			Registry.Reset();
+
+			if (LoadedMaterials.empty())
+			{
+				LoadedMaterials.emplace_back();
+			}
+
+			auto CreateTextureResource = [&](TextureAsset& RawTexture) -> SharedPtr<TextureResource>
+			{
+				const DXGI_FORMAT Format = RawTexture.bSRGB ? DXGI_FORMAT_B8G8R8A8_UNORM_SRGB : DXGI_FORMAT_B8G8R8A8_UNORM;
+				auto Resource = SharedPtr<RTextureD3D12>(new RTextureD3D12(*this, RawTexture.Name, RawTexture.Width, RawTexture.Height, 1, Format, EResourceFlag::None));
+				Resource->AllocateResource();
+				if (!RawTexture.Pixels.empty())
+				{
+					Resource->StreamTexture(reinterpret_cast<void*>(RawTexture.Pixels.data()));
+				}
+				return Resource;
+			};
+
+			const auto MaterialIds = Registry.RegisterMaterials(LoadedMaterials, CreateTextureResource, DefaultTexture, DefaultBlackTexture, DefaultWhiteTexture, DefaultMetalRoughTexture);
+			auto MapMaterialId = [&](uint32 LocalId) -> MaterialId
+			{
+				if (LocalId < MaterialIds.size())
+				{
+					return MaterialIds[LocalId];
+				}
+				return MaterialIds.empty() ? 0u : MaterialIds[0];
+			};
+
+			for (auto& Mesh : LoadedMeshes)
+			{
+				for (auto& Section : Mesh.Sections)
+				{
+					Section.MaterialId = MapMaterialId(Section.MaterialId);
+				}
+			}
+
+			RenderMeshes.clear();
+			RenderMeshes.resize(LoadedMeshes.size());
+			for (size_t MeshIndex = 0; MeshIndex < LoadedMeshes.size(); ++MeshIndex)
+			{
+				auto& Mesh = LoadedMeshes[MeshIndex];
+				auto& RenderMesh = RenderMeshes[MeshIndex];
+				RenderMesh.InitResources(Mesh,
+					[&](RVertexBuffer*& PositionVB, vector<RVertexBuffer*>& UVVBs, RVertexBuffer*& NormalVB, RVertexBuffer*& TangetVB, RVertexBuffer*& BitangetVB, RIndexBuffer*& IB, uint32 NumUVChannels)
+					{
+						PositionVB = new RVertexBufferD3D12(*this, TEXT("PositionVertexBuffer"));
+						UVVBs.resize(NumUVChannels);
+						for (uint32 ChannelIndex = 0; ChannelIndex < NumUVChannels; ++ChannelIndex)
+						{
+							UVVBs[ChannelIndex] = new RVertexBufferD3D12(*this, TEXT("UVVertexBuffer"));
+						}
+						NormalVB = new RVertexBufferD3D12(*this, TEXT("NormalVertexBuffer"));
+						TangetVB = new RVertexBufferD3D12(*this, TEXT("TangentVertexBuffer"));
+						BitangetVB = new RVertexBufferD3D12(*this, TEXT("BitangentVertexBuffer"));
+						IB = new RIndexBufferD3D12(*this, TEXT("IndexBuffer"));
+					});
+			}
 		}
 
 
@@ -289,16 +453,7 @@ void RRenderBackendD3D12::Init()
 			DSVHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 			DSVHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 			ThrowIfFailed(Device->CreateDescriptorHeap(&DSVHeapDesc, IID_PPV_ARGS(&DSVHeap)));
-		
-			{
-				D3D12_DEPTH_STENCIL_VIEW_DESC DepthStencilViewDesc{};
-				DepthStencilViewDesc.Format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
-				DepthStencilViewDesc.Flags = D3D12_DSV_FLAG_NONE;
-				DepthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-
-				Device->CreateDepthStencilView(SceneTextures.SceneDepth->GetUnderlyingResource(), &DepthStencilViewDesc, DSVHeap->GetCPUDescriptorHandleForHeapStart());
-				cout << "Descriptor dsv heap creation success" << endl;
-			}
+			cout << "Descriptor dsv heap creation success" << endl;
 
 			{
 				D3D12_DESCRIPTOR_HEAP_DESC SceneTextureRTVHeapDesc = {};
@@ -306,32 +461,15 @@ void RRenderBackendD3D12::Init()
 				SceneTextureRTVHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 				SceneTextureRTVHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 				ThrowIfFailed(Device->CreateDescriptorHeap(&SceneTextureRTVHeapDesc, IID_PPV_ARGS(&SceneTextureRTVHeap)));
-
-
-				CD3DX12_CPU_DESCRIPTOR_HANDLE RTVHandle(SceneTextureRTVHeap->GetCPUDescriptorHandleForHeapStart());
-				SceneTextures.SceneColor->CreateRTV(RTVHandle);
-				RTVHandle.Offset(1, RTVDescriptorSize);
-
-				SceneTextures.BaseColor->CreateRTV(RTVHandle);
-				RTVHandle.Offset(1, RTVDescriptorSize);
-
-				SceneTextures.WorldNormal->CreateRTV(RTVHandle);
-				RTVHandle.Offset(1, RTVDescriptorSize);
-
-				SceneTextures.Material->CreateRTV(RTVHandle);
-				RTVHandle.Offset(1, RTVDescriptorSize);
-
-				SceneTextures.DebugTexture->CreateRTV(RTVHandle);
-				RTVHandle.Offset(1, RTVDescriptorSize);
-
-				//ScreenPassRTVHeap->
 				cout << "Descriptor rtv heap creation success" << endl;
 			}
 
 
 			const uint32 NumConstantBuffer = _countof(DynamicBuffers);
-			const uint32 NumSceneTextures = 5; 
-			const uint32 NumTextures = RenderMesh.GetNumRegisteredTextures() + 1 + NumSceneTextures; // + 1 ( Default Texture )
+			const uint32 NumSceneTextures = 5;
+			const auto& Registry = MaterialRegistry::Get();
+			const uint32 NumMaterialTextures = (std::max)(Registry.GetTotalTextureCount(), kMaterialTextureSlotCount);
+			const uint32 NumTextures = NumMaterialTextures + 1 + NumSceneTextures; // + 1 ( Default Texture )
 
 			D3D12_DESCRIPTOR_HEAP_DESC CbvHeapDesc = {};
 			CbvHeapDesc.NumDescriptors = NumConstantBuffer + NumTextures;
@@ -344,13 +482,6 @@ void RRenderBackendD3D12::Init()
 			{
 				CD3DX12_CPU_DESCRIPTOR_HANDLE CBVSRVUAVCPUHandle(CBVSRVHeap->GetCPUDescriptorHandleForHeapStart());
 				CD3DX12_GPU_DESCRIPTOR_HANDLE CBVSRVUAVGPUHandle(CBVSRVHeap->GetGPUDescriptorHandleForHeapStart());
-
-				auto BindDefaultTexture = [&](bool bBlack)
-				{
-					Device->CreateShaderResourceView(bBlack ? DefaultBlackTexture->GetUnderlyingResource() : DefaultTexture->GetUnderlyingResource(), &DefaultTexture->GetSRVDesc(), CBVSRVUAVCPUHandle);
-					CBVSRVUAVCPUHandle.Offset(CBVSRVUAVDescriptorSize);
-					CBVSRVUAVGPUHandle.Offset(CBVSRVUAVDescriptorSize);
-				};
 
 				// Refactor belows terrible code boiler plate.
 
@@ -368,66 +499,34 @@ void RRenderBackendD3D12::Init()
 				
 				AddressCacheForDescriptorHeapStart[ToDescriptorIndex(EDescriptorHeapAddressSpace::ShaderResourceView)] = CBVSRVUAVGPUHandle;
 				{
-					Device->CreateShaderResourceView(DefaultTexture->GetUnderlyingResource(), &DefaultTexture->GetSRVDesc(), CBVSRVUAVCPUHandle);
+					Device->CreateShaderResourceView(ToD3D12Resource(DefaultTexture.get()), &DefaultTexture->GetSRVDesc(), CBVSRVUAVCPUHandle);
 					CBVSRVUAVCPUHandle.Offset(CBVSRVUAVDescriptorSize);
 					CBVSRVUAVGPUHandle.Offset(CBVSRVUAVDescriptorSize);
 
 					++NumRegisteredHeaps[ToDescriptorIndex(EDescriptorHeapAddressSpace::ShaderResourceView)];
 				}
 				
-				for (auto& Material : RenderMesh.Materials)
+				for (const auto& Material : Registry.GetMaterials())
 				{
-					if (Material.Textures.size() == 0)
+					for (const auto& Texture : Material.TexturesGPU)
 					{
-						BindDefaultTexture(false); // Diffuse uses check pattern default texture
-						BindDefaultTexture(true /*bBlack*/);
+						auto* D3D12Texture = CastAsD3D12<RTextureD3D12>(Texture.get());
+						Device->CreateShaderResourceView(ToD3D12Resource(D3D12Texture), &D3D12Texture->GetSRVDesc(), CBVSRVUAVCPUHandle);
+						CBVSRVUAVCPUHandle.Offset(CBVSRVUAVDescriptorSize);
+						CBVSRVUAVGPUHandle.Offset(CBVSRVUAVDescriptorSize);
 
 						++NumRegisteredHeaps[ToDescriptorIndex(EDescriptorHeapAddressSpace::ShaderResourceView)];
-						++NumRegisteredHeaps[ToDescriptorIndex(EDescriptorHeapAddressSpace::ShaderResourceView)];
-					}
-					else
-					{
-						for (auto& Texture : Material.Textures)
-						{
-							RTexture2DD3D12* D3D12Texture = CastAsD3D12<RTexture2DD3D12>(Texture.get());
-							Device->CreateShaderResourceView(D3D12Texture->GetUnderlyingResource(), &D3D12Texture->GetSRVDesc(), CBVSRVUAVCPUHandle);
-							CBVSRVUAVCPUHandle.Offset(CBVSRVUAVDescriptorSize);
-							CBVSRVUAVGPUHandle.Offset(CBVSRVUAVDescriptorSize);
-
-							++NumRegisteredHeaps[ToDescriptorIndex(EDescriptorHeapAddressSpace::ShaderResourceView)];
-						}
-
-						if (Material.Textures.size() == 1)
-						{
-							BindDefaultTexture(true);
-							++NumRegisteredHeaps[ToDescriptorIndex(EDescriptorHeapAddressSpace::ShaderResourceView)];
-						}
 					}
 				}
 
-				// SceneTextures
+				// Scene textures (reserved; descriptors filled on InitSceneTextures)
 				{
-					SceneTextures.GPUAddressHandle = CBVSRVUAVGPUHandle;
+					SceneTextureGPUHandle = CBVSRVUAVGPUHandle;
+					SceneTextureCPUHandle = CBVSRVUAVCPUHandle;
+					CBVSRVUAVCPUHandle.Offset(NumSceneTextures, CBVSRVUAVDescriptorSize);
+					CBVSRVUAVGPUHandle.Offset(NumSceneTextures, CBVSRVUAVDescriptorSize);
 
-					Device->CreateShaderResourceView(SceneTextures.SceneDepth->GetUnderlyingResource(), &SceneTextures.SceneDepth->GetSRVDesc(), CBVSRVUAVCPUHandle);
-					CBVSRVUAVCPUHandle.Offset(CBVSRVUAVDescriptorSize);
-					CBVSRVUAVGPUHandle.Offset(CBVSRVUAVDescriptorSize);
-
-					Device->CreateShaderResourceView(SceneTextures.SceneColor->GetUnderlyingResource(), &SceneTextures.SceneColor->GetSRVDesc(), CBVSRVUAVCPUHandle);
-					CBVSRVUAVCPUHandle.Offset(CBVSRVUAVDescriptorSize);
-					CBVSRVUAVGPUHandle.Offset(CBVSRVUAVDescriptorSize);
-
-					Device->CreateShaderResourceView(SceneTextures.BaseColor->GetUnderlyingResource(), &SceneTextures.BaseColor->GetSRVDesc(), CBVSRVUAVCPUHandle);
-					CBVSRVUAVCPUHandle.Offset(CBVSRVUAVDescriptorSize);
-					CBVSRVUAVGPUHandle.Offset(CBVSRVUAVDescriptorSize);
-
-					Device->CreateShaderResourceView(SceneTextures.WorldNormal->GetUnderlyingResource(), &SceneTextures.WorldNormal->GetSRVDesc(), CBVSRVUAVCPUHandle);
-					CBVSRVUAVCPUHandle.Offset(CBVSRVUAVDescriptorSize);
-					CBVSRVUAVGPUHandle.Offset(CBVSRVUAVDescriptorSize);
-
-					Device->CreateShaderResourceView(SceneTextures.Material->GetUnderlyingResource(), &SceneTextures.Material->GetSRVDesc(), CBVSRVUAVCPUHandle);
-					CBVSRVUAVCPUHandle.Offset(CBVSRVUAVDescriptorSize);
-					CBVSRVUAVGPUHandle.Offset(CBVSRVUAVDescriptorSize);
+					NumRegisteredHeaps[ToDescriptorIndex(EDescriptorHeapAddressSpace::ShaderResourceView)] += NumSceneTextures;
 				}
 
 				AddressCacheForDescriptorHeapStart[ToDescriptorIndex(EDescriptorHeapAddressSpace::UnorderedAccessView)] = CBVSRVUAVGPUHandle;
@@ -451,6 +550,13 @@ void RRenderBackendD3D12::Init()
 				ThrowIfFailed(SwapChain->GetBuffer(i, IID_PPV_ARGS(&RenderTargets[i])));
 				Device->CreateRenderTargetView(RenderTargets[i].Get(), nullptr, RTVHandle);
 				RTVHandle.Offset(1, RTVDescriptorSize);
+
+				if (!BackBufferTextures[i])
+				{
+					String Name = TEXT("BackBuffer") + std::to_wstring(i);
+					BackBufferTextures[i] = SharedPtr<RTextureD3D12>(new RTextureD3D12(*this, Name, MWindow::Get().GetWidth(), MWindow::Get().GetHeight(), 1, DXGI_FORMAT_R8G8B8A8_UNORM, EResourceFlag::RenderTarget, EResourceType::RenderTexture2D));
+				}
+				BackBufferTextures[i]->SetUnderlyingResource(RenderTargets[i].Get());
 			}
 
 			cout << "Descriptor heap creation success" << endl;
@@ -486,12 +592,11 @@ void RRenderBackendD3D12::Init()
 			Ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, NumRegisteredHeaps[ToDescriptorIndex(EDescriptorHeapAddressSpace::ShaderResourceView)], 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 			//Ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, NumRegisteredHeaps[ToDescriptorIndex(EDescriptorHeapAddressSpace::UnorderedAccessView)], 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
-			CD3DX12_ROOT_PARAMETER1 RootParameters[5]{};
+			CD3DX12_ROOT_PARAMETER1 RootParameters[4]{};
 			RootParameters[0].InitAsDescriptorTable(1, &Ranges[0], D3D12_SHADER_VISIBILITY_ALL);
 			RootParameters[1].InitAsDescriptorTable(1, &Ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);
-			//RootParameters[2].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE,D3D12_SHADER_VISIBILITY_PIXEL);
-			RootParameters[3].InitAsConstants(3, 0, 1, D3D12_SHADER_VISIBILITY_PIXEL);
-			RootParameters[4].InitAsConstants(1, 0, 2, D3D12_SHADER_VISIBILITY_PIXEL);
+			RootParameters[2].InitAsConstants(3, 0, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+			RootParameters[3].InitAsConstants(kMaterialConstantCount, 0, 2, D3D12_SHADER_VISIBILITY_PIXEL);
 
 
 			// Allow input layout and deny uneccessary access to certain pipeline stages.
@@ -550,18 +655,49 @@ void RRenderBackendD3D12::Init()
 
 		// Prepass PSO
 		{
-			TRefCountPtr<ID3DBlob> VertexShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/PrepassRendering.hlsl"), TEXT("VSMain"), EShaderType::VS);
+			const uint32 NumMaterialTextures = (std::max)(MaterialRegistry::Get().GetTotalTextureCount(), kMaterialTextureSlotCount);
+			const std::string NumMaterialTexturesStr = std::to_string(NumMaterialTextures);
+			const uint32 MaterialTextureStride = kMaterialTextureSlotCount;
+			const std::string MaterialTextureStrideStr = std::to_string(MaterialTextureStride);
+			uint32 NumUVChannels = 1;
+			for (const auto& Mesh : RenderMeshes)
+			{
+				NumUVChannels = (std::max)(NumUVChannels, Mesh.GetNumUVChannels());
+			}
+			const std::string NumUVChannelsStr = std::to_string(NumUVChannels);
+			vector<D3D_SHADER_MACRO> Defines
+			{
+				D3D_SHADER_MACRO{ "NUM_MATERIAL_TEXTURES", NumMaterialTexturesStr.c_str() },
+				D3D_SHADER_MACRO{ "MATERIAL_TEXTURE_STRIDE", MaterialTextureStrideStr.c_str() },
+				D3D_SHADER_MACRO{ "NUM_UV_CHANNELS", NumUVChannelsStr.c_str() },
+				D3D_SHADER_MACRO{ nullptr, nullptr }
+			};
 
-			TRefCountPtr<ID3DBlob> PixelShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/PrepassRendering.hlsl"), TEXT("PSMain"), EShaderType::PS);
+			TRefCountPtr<ID3DBlob> VertexShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/PrepassRendering.hlsl"), TEXT("VSMain"), Defines, EShaderType::VS);
 
-			D3D12_INPUT_ELEMENT_DESC InputElementDescs[] =
+			TRefCountPtr<ID3DBlob> PixelShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/PrepassRendering.hlsl"), TEXT("PSMain"), Defines, EShaderType::PS);
+
+			D3D12_INPUT_ELEMENT_DESC InputElementDescsUV1[] =
+			{
+				{ "POSITION",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD",		0, DXGI_FORMAT_R32G32_FLOAT,		1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD",		1, DXGI_FORMAT_R32G32_FLOAT,		2, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			};
+			D3D12_INPUT_ELEMENT_DESC InputElementDescsUV0[] =
 			{
 				{ "POSITION",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 				{ "TEXCOORD",		0, DXGI_FORMAT_R32G32_FLOAT,		1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			};
 
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {};
-			PSODesc.InputLayout = { InputElementDescs, _countof(InputElementDescs) };
+			if (NumUVChannels > 1)
+			{
+				PSODesc.InputLayout = { InputElementDescsUV1, _countof(InputElementDescsUV1) };
+			}
+			else
+			{
+				PSODesc.InputLayout = { InputElementDescsUV0, _countof(InputElementDescsUV0) };
+			}
 			PSODesc.pRootSignature = GraphicsPipelines[ToPipelineIndex(EGraphicsPipeline::Prepass)].GetRootSignature().Get();
 			PSODesc.VS = CD3DX12_SHADER_BYTECODE{ VertexShader.Get() };
 			PSODesc.PS = CD3DX12_SHADER_BYTECODE{ PixelShader.Get() };
@@ -581,13 +717,40 @@ void RRenderBackendD3D12::Init()
 
 		// ForwardLighting PSO
 		{
-			vector<D3D_SHADER_MACRO> Defines{ D3D_SHADER_MACRO{ "USE_GBUFFER", "0" }, D3D_SHADER_MACRO{ "BASE_PASS", "1" }, D3D_SHADER_MACRO{ nullptr, nullptr } };
+			const uint32 NumMaterialTextures = (std::max)(MaterialRegistry::Get().GetTotalTextureCount(), kMaterialTextureSlotCount);
+			const std::string NumMaterialTexturesStr = std::to_string(NumMaterialTextures);
+			const uint32 MaterialTextureStride = kMaterialTextureSlotCount;
+			const std::string MaterialTextureStrideStr = std::to_string(MaterialTextureStride);
+			uint32 NumUVChannels = 1;
+			for (const auto& Mesh : RenderMeshes)
+			{
+				NumUVChannels = (std::max)(NumUVChannels, Mesh.GetNumUVChannels());
+			}
+			const std::string NumUVChannelsStr = std::to_string(NumUVChannels);
+			vector<D3D_SHADER_MACRO> Defines
+			{
+				D3D_SHADER_MACRO{ "USE_GBUFFER", "0" },
+				D3D_SHADER_MACRO{ "BASE_PASS", "1" },
+				D3D_SHADER_MACRO{ "NUM_MATERIAL_TEXTURES", NumMaterialTexturesStr.c_str() },
+				D3D_SHADER_MACRO{ "MATERIAL_TEXTURE_STRIDE", MaterialTextureStrideStr.c_str() },
+				D3D_SHADER_MACRO{ "NUM_UV_CHANNELS", NumUVChannelsStr.c_str() },
+				D3D_SHADER_MACRO{ nullptr, nullptr }
+			};
 
-			TRefCountPtr<ID3DBlob> VertexShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), TEXT("VSMain"), EShaderType::VS);
+			TRefCountPtr<ID3DBlob> VertexShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), TEXT("VSMain"), Defines, EShaderType::VS);
 			TRefCountPtr<ID3DBlob> PixelShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), TEXT("PSMain"), Defines, EShaderType::PS);
 
 			// Define the vertex input layout.
-			D3D12_INPUT_ELEMENT_DESC InputElementDescs[] =
+			D3D12_INPUT_ELEMENT_DESC InputElementDescsUV1[] =
+			{
+				{ "POSITION",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD",		0, DXGI_FORMAT_R32G32_FLOAT,		1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD",		1, DXGI_FORMAT_R32G32_FLOAT,		2, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "NORMAL",			0, DXGI_FORMAT_R32G32B32_FLOAT,		3, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TANGENT",		0, DXGI_FORMAT_R32G32B32_FLOAT,		4, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "BITANGENT",		0, DXGI_FORMAT_R32G32B32_FLOAT,		5, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+			};
+			D3D12_INPUT_ELEMENT_DESC InputElementDescsUV0[] =
 			{
 				{ "POSITION",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 				{ "TEXCOORD",		0, DXGI_FORMAT_R32G32_FLOAT,		1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -597,7 +760,14 @@ void RRenderBackendD3D12::Init()
 			};
 
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {};
-			PSODesc.InputLayout = { InputElementDescs, _countof(InputElementDescs) };
+			if (NumUVChannels > 1)
+			{
+				PSODesc.InputLayout = { InputElementDescsUV1, _countof(InputElementDescsUV1) };
+			}
+			else
+			{
+				PSODesc.InputLayout = { InputElementDescsUV0, _countof(InputElementDescsUV0) };
+			}
 			PSODesc.pRootSignature = GraphicsPipelines[ToPipelineIndex(EGraphicsPipeline::ForwardLighting)].GetRootSignature().Get();
 			PSODesc.VS = CD3DX12_SHADER_BYTECODE{ VertexShader.Get() };
 			PSODesc.PS = CD3DX12_SHADER_BYTECODE{ PixelShader.Get() };
@@ -621,13 +791,40 @@ void RRenderBackendD3D12::Init()
 
 		// Basepass PSO
 		{
-			vector<D3D_SHADER_MACRO> Defines{ D3D_SHADER_MACRO{ "USE_GBUFFER", "1" }, D3D_SHADER_MACRO{ "BASE_PASS", "1" }, D3D_SHADER_MACRO{ nullptr, nullptr } };
+			const uint32 NumMaterialTextures = (std::max)(MaterialRegistry::Get().GetTotalTextureCount(), kMaterialTextureSlotCount);
+			const std::string NumMaterialTexturesStr = std::to_string(NumMaterialTextures);
+			const uint32 MaterialTextureStride = kMaterialTextureSlotCount;
+			const std::string MaterialTextureStrideStr = std::to_string(MaterialTextureStride);
+			uint32 NumUVChannels = 1;
+			for (const auto& Mesh : RenderMeshes)
+			{
+				NumUVChannels = (std::max)(NumUVChannels, Mesh.GetNumUVChannels());
+			}
+			const std::string NumUVChannelsStr = std::to_string(NumUVChannels);
+			vector<D3D_SHADER_MACRO> Defines
+			{
+				D3D_SHADER_MACRO{ "USE_GBUFFER", "1" },
+				D3D_SHADER_MACRO{ "BASE_PASS", "1" },
+				D3D_SHADER_MACRO{ "NUM_MATERIAL_TEXTURES", NumMaterialTexturesStr.c_str() },
+				D3D_SHADER_MACRO{ "MATERIAL_TEXTURE_STRIDE", MaterialTextureStrideStr.c_str() },
+				D3D_SHADER_MACRO{ "NUM_UV_CHANNELS", NumUVChannelsStr.c_str() },
+				D3D_SHADER_MACRO{ nullptr, nullptr }
+			};
 
-			TRefCountPtr<ID3DBlob> VertexShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), TEXT("VSMain"), EShaderType::VS);
+			TRefCountPtr<ID3DBlob> VertexShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), TEXT("VSMain"), Defines, EShaderType::VS);
 			TRefCountPtr<ID3DBlob> PixelShader = MShaderCompiler::Get().CompileShader(TEXT("C:/Users/dnjfd/Desktop/Collection/RyoikiTenaki/Sinkansoai/Sources/Render/Shaders/SimpleRendering.hlsl"), TEXT("PSMain"), Defines, EShaderType::PS);
 
 			// Define the vertex input layout.
-			D3D12_INPUT_ELEMENT_DESC InputElementDescs[] =
+			D3D12_INPUT_ELEMENT_DESC InputElementDescsUV1[] =
+			{
+				{ "POSITION",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD",		0, DXGI_FORMAT_R32G32_FLOAT,		1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD",		1, DXGI_FORMAT_R32G32_FLOAT,		2, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "NORMAL",			0, DXGI_FORMAT_R32G32B32_FLOAT,		3, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TANGENT",		0, DXGI_FORMAT_R32G32B32_FLOAT,		4, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "BITANGENT",		0, DXGI_FORMAT_R32G32B32_FLOAT,		5, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+			};
+			D3D12_INPUT_ELEMENT_DESC InputElementDescsUV0[] =
 			{
 				{ "POSITION",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 				{ "TEXCOORD",		0, DXGI_FORMAT_R32G32_FLOAT,		1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -637,7 +834,14 @@ void RRenderBackendD3D12::Init()
 			};
 
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSODesc = {};
-			PSODesc.InputLayout = { InputElementDescs, _countof(InputElementDescs) };
+			if (NumUVChannels > 1)
+			{
+				PSODesc.InputLayout = { InputElementDescsUV1, _countof(InputElementDescsUV1) };
+			}
+			else
+			{
+				PSODesc.InputLayout = { InputElementDescsUV0, _countof(InputElementDescsUV0) };
+			}
 			PSODesc.pRootSignature = GraphicsPipelines[ToPipelineIndex(EGraphicsPipeline::Basepass)].GetRootSignature().Get();
 			PSODesc.VS = CD3DX12_SHADER_BYTECODE{ VertexShader.Get() };
 			PSODesc.PS = CD3DX12_SHADER_BYTECODE{ PixelShader.Get() };
@@ -673,7 +877,8 @@ void RRenderBackendD3D12::Init()
 			PSODesc.VS = CD3DX12_SHADER_BYTECODE{ VertexShader.Get() };
 			PSODesc.PS = CD3DX12_SHADER_BYTECODE{ PixelShader.Get() };
 			PSODesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-			PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+			PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+			PSODesc.RasterizerState.FrontCounterClockwise = TRUE;
 			PSODesc.RasterizerState.DepthClipEnable = false;
 
 			PSODesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -753,7 +958,8 @@ void RRenderBackendD3D12::Init()
 			PSODesc.VS = CD3DX12_SHADER_BYTECODE{ VertexShader.Get() };
 			PSODesc.PS = CD3DX12_SHADER_BYTECODE{ PixelShader.Get() };
 			PSODesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-			PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+			PSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+			PSODesc.RasterizerState.FrontCounterClockwise = TRUE;
 			PSODesc.RasterizerState.DepthClipEnable = false;
 
 			PSODesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -788,21 +994,6 @@ void RRenderBackendD3D12::Init()
 
 			WaitForPreviousFence();
 			cout << " Test fence creation " << endl;
-
-			{
-				auto& GraphicsCmd = GraphicsCommandList;
-				CD3DX12_RESOURCE_BARRIER Barriers[] =
-				{
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneDepth->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_DEPTH_READ),
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.SceneColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ),
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.BaseColor->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ),
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.WorldNormal->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ),
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.Material->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ),
-
-					CD3DX12_RESOURCE_BARRIER::Transition(SceneTextures.DebugTexture->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET),
-				};
-				GraphicsCmd.ResourceBarrier(_countof(Barriers), Barriers);
-			}
 			GraphicsCommandList.Close();
 
 			// Execute the command list.
@@ -881,12 +1072,20 @@ void RRenderBackendD3D12::RenderFinish()
 
 	GraphicsCommandList.EndEvent();
 
+	Execute();
+	SwapChain->Present(1, 0);
 	WaitForPreviousFence();
 }
 
-RMesh* RRenderBackendD3D12::GetRenderMesh()
+vector<RMesh*> RRenderBackendD3D12::GetRenderMesh()
 {
-	return &RenderMesh;
+	vector<RMesh*> Temp;
+	Temp.reserve(RenderMeshes.size());
+	for (auto& Mesh : RenderMeshes)
+	{
+		Temp.push_back(&Mesh);
+	}
+	return Temp;
 }
 
 RMesh* RRenderBackendD3D12::GetLightVolumeMesh()
@@ -894,6 +1093,7 @@ RMesh* RRenderBackendD3D12::GetLightVolumeMesh()
 	return &LightVolumeMesh;
 }
 
+// TO DO Remove this and move to scene texture.
 uint32 RRenderBackendD3D12::GetSceneRTVCount() const
 {
 	return 5;
@@ -912,7 +1112,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE RRenderBackendD3D12::GetSceneDepthHandle()
 
 D3D12_GPU_DESCRIPTOR_HANDLE RRenderBackendD3D12::GetSceneTextureGPUHandle()
 {
-	return SceneTextures.GPUAddressHandle;
+	return SceneTextureGPUHandle;
 }
 
 ID3D12DescriptorHeap* RRenderBackendD3D12::GetCBVSRVHeap()
@@ -940,36 +1140,15 @@ RGraphicsPipeline* RRenderBackendD3D12::GetGraphicsPipeline(EGraphicsPipeline Pi
 	return &GraphicsPipelines[static_cast<uint32>(Pipeline)];
 }
 
-ID3D12Resource* RRenderBackendD3D12::GetSceneTextureResource(ESceneTexture Texture)
-{
-	switch (Texture)
-	{
-	case ESceneTexture::SceneDepth:
-		return SceneTextures.SceneDepth->GetUnderlyingResource();
-	case ESceneTexture::SceneColor:
-		return SceneTextures.SceneColor->GetUnderlyingResource();
-	case ESceneTexture::BaseColor:
-		return SceneTextures.BaseColor->GetUnderlyingResource();
-	case ESceneTexture::WorldNormal:
-		return SceneTextures.WorldNormal->GetUnderlyingResource();
-	case ESceneTexture::Material:
-		return SceneTextures.Material->GetUnderlyingResource();
-	case ESceneTexture::DebugTexture:
-		return SceneTextures.DebugTexture->GetUnderlyingResource();
-	default:
-		return nullptr;
-	}
-}
-
 D3D12_CPU_DESCRIPTOR_HANDLE RRenderBackendD3D12::GetBackBufferRTVHandle()
 {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE Handle(RTVHeap->GetCPUDescriptorHandleForHeapStart(), FrameIndex, RTVDescriptorSize);
 	return Handle;
 }
 
-ID3D12Resource* RRenderBackendD3D12::GetBackBufferResource()
+RTexture* RRenderBackendD3D12::GetBackBufferResource()
 {
-	return RenderTargets[FrameIndex].Get();
+	return BackBufferTextures[FrameIndex].get();
 }
 
 D3D12_RESOURCE_DESC CreateResourceDescD3D12(EResourceType ResourceType, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height, uint32 NumMips, uint32 ArraySize)
@@ -1035,15 +1214,17 @@ D3D12_RESOURCE_DESC CreateResourceDescD3D12(EResourceType ResourceType, EResourc
 
 TRefCountPtr<ID3D12Resource> RRenderBackendD3D12::CreateUnderlyingResource(EResourceType ResourceType, EResourceFlag ResourceFlag, DXGI_FORMAT Format, uint32 Width, uint32 Height, uint32 NumMips, uint32 Depths)
 {		
-	// Create the depth/stencil buffer and view.
 	D3D12_RESOURCE_DESC Desc = CreateResourceDescD3D12(ResourceType, ResourceFlag, Format, Width, Height, NumMips, Depths);
 
 	auto HeapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	D3D12_CLEAR_VALUE ClearValue;
 	ClearValue.Format = Format;
 
+	const bool bNeedsClearValue = (ResourceFlag == EResourceFlag::DepthStencilTarget || ResourceFlag == EResourceFlag::RenderTarget);
+
 	if (ResourceFlag == EResourceFlag::DepthStencilTarget)
 	{
+		ClearValue.Format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
 		ClearValue.DepthStencil.Depth = 0.0f;
 		ClearValue.DepthStencil.Stencil = 0;
 	}
@@ -1055,7 +1236,7 @@ TRefCountPtr<ID3D12Resource> RRenderBackendD3D12::CreateUnderlyingResource(EReso
 		ClearValue.Color[3] = 0;
 	}
 
-	const bool bTextureResource = (ResourceType == EResourceType::Texture2D || ResourceFlag == EResourceFlag::DepthStencilTarget);
+	const bool bTextureResource = (ResourceType == EResourceType::Texture2D);
 
 	TRefCountPtr<ID3D12Resource> OutResource;
 	ThrowIfFailed(Device->CreateCommittedResource(
@@ -1063,7 +1244,7 @@ TRefCountPtr<ID3D12Resource> RRenderBackendD3D12::CreateUnderlyingResource(EReso
 		D3D12_HEAP_FLAG_NONE,
 		&Desc,
 		bTextureResource ? D3D12_RESOURCE_STATE_COPY_DEST : D3D12_RESOURCE_STATE_COMMON,
-		bTextureResource ? nullptr : &ClearValue,
+		bNeedsClearValue ? &ClearValue : nullptr,
 		IID_PPV_ARGS(&OutResource)));
 
 	return OutResource;

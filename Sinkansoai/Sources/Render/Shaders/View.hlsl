@@ -51,12 +51,11 @@ struct LightContext
 	float EndFalloff;	
 };
 
-float3 CalcDirectionalLight(Directional Light, float3 N, float3 V, float3 BaseColor)
+float3 CalcDirectionalLight(Directional Light, float3 N, float3 V, float3 BaseColor, float SpecularStrength, float Shininess)
 {
 	const float kPi = 3.14159265;
-	const float kShininess = 4.0;
 	const float LightIntensity = 1;
-	const float kEnergyConservation = ( 8.0 + kShininess ) / ( 8.0 * kPi ); 
+	const float kEnergyConservation = ( 8.0 + Shininess ) / ( 8.0 * kPi ); 
 
 	float3 L = normalize(-Light.Direction.xyz);
 	float3 H = normalize(L + V);
@@ -65,11 +64,16 @@ float3 CalcDirectionalLight(Directional Light, float3 N, float3 V, float3 BaseCo
 	float3 R = reflect(-L, N);
 	float VoR = max(dot(V, R), 0.0);
 
-	float3 Diffuse  = Light.Diffuse.xyz * rcp(kPi)  * NoL * BaseColor;
-	float3 Specular = 0;//kEnergyConservation * pow(max(dot(N, H), 0.0), kShininess);
-	float3 Ambient = 0;
+	float3 Diffuse  = Light.Diffuse.xyz * NoL * BaseColor * rcp(kPi);
+	float3 Specular = Light.Specular.xyz * SpecularStrength * kEnergyConservation * pow(max(dot(N, H), 0.0), Shininess);
+	float3 Ambient = 0;// Light.Ambient.xyz* BaseColor;
 
 	return (Diffuse + Specular + Ambient) * LightIntensity;
+}
+
+float3 CalcDirectionalLight(Directional Light, float3 N, float3 V, float3 BaseColor)
+{
+	return CalcDirectionalLight(Light, N, V, BaseColor, 0.04f, 6.0f);
 }
 
 float CalcAttenuation(float d, float Start, float End)
@@ -77,11 +81,10 @@ float CalcAttenuation(float d, float Start, float End)
     return saturate((End - d) / (End - Start));
 }
 
-float3 CalcLightPointLightEnergy(LightContext Context, float3 N, float3 V, float3 BaseColor)
+float3 CalcLightPointLightEnergy(LightContext Context, float3 N, float3 V, float3 BaseColor, float SpecularStrength, float Shininess)
 {
 	const float kPi = 3.14159265;
-	const float kShininess = 4.0;
-	const float kEnergyConservation = ( 8.0 + kShininess ) / ( 8.0 * kPi ); 
+	const float kEnergyConservation = ( 8.0 + Shininess ) / ( 8.0 * kPi ); 
 
 	float3 LightToPixel = Context.LightWorldPosition - Context.WorldPosition;
 	float Length = length(LightToPixel);
@@ -94,11 +97,16 @@ float3 CalcLightPointLightEnergy(LightContext Context, float3 N, float3 V, float
 	float3 R = reflect(-L, N);
 	float VoR = max(dot(V, R), 0.0);
 
-	float3 Diffuse  = Context.Color * rcp(kPi) * NoL * BaseColor;
-	float3 Specular = 0;//kEnergyConservation * pow(max(dot(N, H), 0.0), kShininess);
+	float3 Diffuse  = Context.Color * NoL * BaseColor;
+	float3 Specular = Context.Color * SpecularStrength * kEnergyConservation * pow(max(dot(N, H), 0.0), Shininess);
 
 	return (Diffuse + Specular) * LightEnergy;
 }  
+
+float3 CalcLightPointLightEnergy(LightContext Context, float3 N, float3 V, float3 BaseColor)
+{
+	return CalcLightPointLightEnergy(Context, N, V, BaseColor, 0.04f, 32.0f);
+}
 
 
 float3 GetDebugColor(uint ColorId)

@@ -4,5 +4,4 @@
 void MTaskSystem::LaunchTasks()
 {
 	RenderCommandQueue.Main();
-	//TaskCommandQueue.Main();
 }

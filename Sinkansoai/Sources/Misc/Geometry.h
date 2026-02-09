@@ -84,7 +84,7 @@ public:
 		UVs[22] = float2(1.0f, 0.0f);
 		UVs[23] = float2(1.0f, 1.0f);
 
-		Out.RenderData.UV0.assign(&UVs[0], &UVs[24]);
+		Out.RenderData.GetUVChannel(0).assign(&UVs[0], &UVs[24]);
 
 		float4 Colors[24];
 

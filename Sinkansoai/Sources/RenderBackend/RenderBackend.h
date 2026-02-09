@@ -2,9 +2,12 @@
 #include "../Definitions.h"
 #include "RenderCommandList.h"
 #include "DynamicBuffer.h"
+#include "ResourceBarrier.h"
 
 struct RMesh;
 class RGraphicsPipeline;
+struct RSceneTextures;
+class RTexture;
 
 enum EResourceType
 {
@@ -62,18 +65,6 @@ constexpr uint32 ToDescriptorIndex(EDescriptorHeapAddressSpace Value)
 	return static_cast<uint32>(Value);
 }
 
-inline D3D12_RESOURCE_BARRIER MakeTransitionBarrier(ID3D12Resource* Resource, D3D12_RESOURCE_STATES Before, D3D12_RESOURCE_STATES After)
-{
-	D3D12_RESOURCE_BARRIER Barrier{};
-	Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	Barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	Barrier.Transition.pResource = Resource;
-	Barrier.Transition.StateBefore = Before;
-	Barrier.Transition.StateAfter = After;
-	Barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	return Barrier;
-}
-
 enum class ESceneTexture : uint8
 {
 	SceneDepth = 0,
@@ -105,6 +96,7 @@ public:
 	virtual void Teardown() {};
 	virtual void RenderBegin() {};
 	virtual void RenderFinish() {};
+	virtual void InitSceneTextures(RSceneTextures& SceneTextures) {};
 
 	void SetBackendName(const String& NAME)
 	{
@@ -133,10 +125,14 @@ public:
 
 	virtual RDynamicBuffer* GetGlobalDynamicBuffer(uint32 Index) { return nullptr;  }
 
-	virtual RMesh* GetRenderMesh() { return nullptr; }
+	virtual vector<RMesh*> GetRenderMesh() { return vector<RMesh*>{}; }
 	virtual RMesh* GetLightVolumeMesh() { return nullptr; }
 
 	virtual uint32 GetSceneRTVCount() const { return 0; }
+
+	virtual RGraphicsPipeline* GetGraphicsPipeline(EGraphicsPipeline) { return nullptr; }
+
+#if PLATFORM_WINDOWS
 	virtual D3D12_CPU_DESCRIPTOR_HANDLE GetSceneRTVHandle(uint32 Index) { return {}; }
 	virtual D3D12_CPU_DESCRIPTOR_HANDLE GetSceneDepthHandle() { return {}; }
 	virtual D3D12_GPU_DESCRIPTOR_HANDLE GetSceneTextureGPUHandle() { return {}; }
@@ -147,10 +143,7 @@ public:
 	virtual const D3D12_VIEWPORT* GetViewport() { return nullptr; }
 	virtual const D3D12_RECT* GetScissorRect() { return nullptr; }
 
-	virtual RGraphicsPipeline* GetGraphicsPipeline(EGraphicsPipeline) { return nullptr; }
-	virtual ID3D12Resource* GetSceneTextureResource(ESceneTexture) { return nullptr; }
-
 	virtual D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferRTVHandle() { return {}; }
-	virtual ID3D12Resource* GetBackBufferResource() { return nullptr; }
+	virtual RTexture* GetBackBufferResource() { return nullptr; }
+#endif
 };
-

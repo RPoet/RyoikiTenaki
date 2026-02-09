@@ -2,11 +2,17 @@
 #include <iostream>
 #include "Windows.h"
 #include "Timer.h"
+#include "Module/EditorUI/EditorUI.h"
 
 IMPLEMENT_MODULE(MWindow)
 
 LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (MEditorUI::HandleWin32Message(hWnd, message, wParam, lParam))
+	{
+		return 1;
+	}
+
 	switch (message)
 	{
 	case WM_SIZE:

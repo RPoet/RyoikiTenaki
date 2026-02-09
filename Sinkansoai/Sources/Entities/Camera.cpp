@@ -1,6 +1,8 @@
 #include "Camera.h"
 #include "../Input.h"
-#include <DirectXMath.h>
+#include "../Math/SIMDMath.h"
+
+using namespace SIMDMath;
 
 void MCamera::Register()
 {
@@ -14,68 +16,59 @@ void MCamera::Destroy()
 
 void MCamera::Tick(float DeltaTime)
 {
-	const float3 FocusPoint = float3(0, 0, 0);
+	const float MoveSpeed = DeltaTime * 500;
+	const float RotationSpeed = 0.15f;
 
-	const float Move = DeltaTime * 500;
-
-	if (MInput::Get().IsPressed('Z'))
+	if (MInput::Get().IsRightMouseDown())
 	{
-		this->Transform.Rotation.y -= Move * 0.08f;
+		int32 DeltaX = MInput::Get().GetMouseDeltaX();
+		int32 DeltaY = MInput::Get().GetMouseDeltaY();
+
+		Transform.Rotation.y += DeltaX * RotationSpeed;
+		Transform.Rotation.x += DeltaY * RotationSpeed;
+
+		if (Transform.Rotation.x > 89.0f) Transform.Rotation.x = 89.0f;
+		if (Transform.Rotation.x < -89.0f) Transform.Rotation.x = -89.0f;
 	}
 
+	Matrix4x4 RotMat = GetRotationMatrix();
 
-	if (MInput::Get().IsPressed('X'))
-	{
-		this->Transform.Rotation.y += Move * 0.08f;
-	}
+	Vector3 Forward = TransformVector(Vector3::Forward(), RotMat);
+	Vector3 Right = TransformVector(Vector3::Right(), RotMat);
+	Vector3 Up = Vector3::Up();
 
-	const DirectX::XMMATRIX RotationOnly = DirectX::XMMatrixRotationRollPitchYaw(
-		DirectX::XMConvertToRadians(this->Transform.Rotation.x),
-		DirectX::XMConvertToRadians(this->Transform.Rotation.y),
-		DirectX::XMConvertToRadians(this->Transform.Rotation.z));
+	Vector3 Movement = Vector3::Zero();
 
-	const DirectX::XMVECTOR Forward = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.f, 0.f, 1.f, 0.f), RotationOnly));
-	const DirectX::XMVECTOR Right = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(1.f, 0.f, 0.f, 0.f), RotationOnly));
-	const DirectX::XMVECTOR Up = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.f, 1.f, 0.f, 0.f), RotationOnly));
-
-	DirectX::XMVECTOR Movement = DirectX::XMVectorZero();
-
-	// Keyboard Input
 	if (MInput::Get().IsPressed('W'))
 	{
-		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Forward, Move));
+		Movement += Forward * MoveSpeed;
 	}
-
 	if (MInput::Get().IsPressed('S'))
 	{
-		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Forward, -Move));
+		Movement -= Forward * MoveSpeed;
 	}
-
 	if (MInput::Get().IsPressed('A'))
 	{
-		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Right, -Move));
+		Movement -= Right * MoveSpeed;
 	}
-
 	if (MInput::Get().IsPressed('D'))
 	{
-		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Right, Move));
+		Movement += Right * MoveSpeed;
+	}
+	if (MInput::Get().IsPressed('E'))
+	{
+		Movement += Up * MoveSpeed;
+	}
+	if (MInput::Get().IsPressed('Q'))
+	{
+		Movement -= Up * MoveSpeed;
 	}
 
-	if (MInput::Get().IsPressed('U'))
+	if (Vector3::Dot(Movement, Movement) > 0.0001f)
 	{
-		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Up, Move));
-	}
-
-	if (MInput::Get().IsPressed('I'))
-	{
-		Movement = DirectX::XMVectorAdd(Movement, DirectX::XMVectorScale(Up, -Move));
-	}
-
-	if (!DirectX::XMVector3Equal(Movement, DirectX::XMVectorZero()))
-	{
-		DirectX::XMVECTOR Position = DirectX::XMVectorSet(this->Transform.Position.x, this->Transform.Position.y, this->Transform.Position.z, 1.f);
-		Position = DirectX::XMVectorAdd(Position, Movement);
-		DirectX::XMStoreFloat4(&this->Transform.Position, Position);
-		this->Transform.Position.w = 1.f;
+		Transform.SetPosition(
+			Transform.Position.x + Movement.x,
+			Transform.Position.y + Movement.y,
+			Transform.Position.z + Movement.z);
 	}
 }

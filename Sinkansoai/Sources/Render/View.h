@@ -11,6 +11,9 @@ struct RViewContext
 	float3 ViewTranslation;
 };
 
+// Naming aliases (render-facing types without R-prefix).
+using ViewContext = RViewContext;
+
 
 __declspec(align(16u)) class RViewMatrices
 {
@@ -28,6 +31,8 @@ public:
 
 	float3 ViewTranslation;
 };
+
+using ViewMatrices = RViewMatrices;
 
 
 __declspec(align(16u)) struct RDirectionalLightData

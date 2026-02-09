@@ -5,8 +5,7 @@ class RRenderResource
 {
 protected:
 	String Name{ TEXT("Default") };
-
-	bool bInitialized = false;
+	bool bInitialized{ false };
 
 public:
 	RRenderResource(const String& Name)
@@ -32,5 +31,14 @@ public:
 	{
 		bInitialized = false;
 	};
-};
 
+	virtual const void* GetUnderlyingResource() const
+	{
+		return nullptr;
+	}
+
+	virtual void* GetUnderlyingResource()
+	{
+		return nullptr;
+	}
+};

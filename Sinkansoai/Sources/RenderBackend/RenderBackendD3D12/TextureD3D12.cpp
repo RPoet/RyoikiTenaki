@@ -301,42 +301,35 @@ uint32 GetPerFormatPixelSizeInBytes(DXGI_FORMAT Format)
 	return 0;
 }
 
-void RTexture2DD3D12::AllocateResource()
+void RTextureD3D12::AllocateResource()
 {
 	RRenderResource::AllocateResource();
 
-	UnderlyingResource = Backend.CreateTexture2DResource(Name.c_str(), Flag, Format, Width, Height);
-
-	SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; // change this function of the inputs.
-	SRVDesc.Format = Format;
-	SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	SRVDesc.Texture2D.MipLevels = NumMips;
+	UnderlyingResource = Backend.CreateUnderlyingResource(ResourceType, Flag, Format, Width, Height, NumMips, 1);
+	if (UnderlyingResource)
+	{
+		UnderlyingResource->SetName(Name.c_str());
+	}
 }
 
 
-void RTexture2DD3D12::StreamTexture(void* pData)
+void RTextureD3D12::StreamTexture(void* pData)
 {
+	if (ResourceType != EResourceType::Texture2D)
+	{
+		assert(false && "StreamTexture only supports Texture2D resources.");
+		return;
+	}
+
 	const UINT64 UploadBufferSize = GetRequiredIntermediateSize(UnderlyingResource.Get(), 0, 1);
 	auto&& UploadHeap = Backend.CreateUploadHeap(UploadBufferSize);
 	Backend.GetMainGraphicsCommandList().CopyTexture(pData, UnderlyingResource.Get(), UploadHeap.Get(), Width, Height, PixelSizeInBytes);
 }
 
 
-void RRenderTargetD3D12::AllocateResource()
+void RTextureD3D12::CreateRTV(D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
 {
-	RRenderResource::AllocateResource();
-
-	UnderlyingResource = Backend.CreateRenderTargetResource(Name.c_str(), Flag, Format, Width, Height);
-
-	SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; // Check
-	SRVDesc.Format = Format;
-	SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	SRVDesc.Texture2D.MipLevels = NumMips;
-}
-
-void RRenderTargetD3D12::CreateRTV(D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
-{
-	Backend.GetDevice()->CreateRenderTargetView(GetUnderlyingResource(), nullptr, DestDescriptor);
+	Backend.GetDevice()->CreateRenderTargetView(reinterpret_cast<ID3D12Resource*>(GetUnderlyingResource()), nullptr, DestDescriptor);
 	bRTVGenerated = true;
 	DescriptorAddress = DestDescriptor;
 }

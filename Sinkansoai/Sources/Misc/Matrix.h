@@ -1,8 +1,12 @@
 #pragma once
-#include <DirectXMath.h>
+#include "../Math/SIMDMath.h"
 
+using float4x4 = SIMDMath::Matrix4x4;
 
-using float4x4 = DirectX::XMFLOAT4X4;
-using float3x3 = DirectX::XMFLOAT3X3;
+// Simple 3x3 struct as placeholder or if actually used
+struct float3x3 
+{
+    float m[3][3];
+};
 
-using XMMATRIX = DirectX::XMMATRIX;
+using XMMATRIX = SIMDMath::Matrix4x4;

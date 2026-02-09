@@ -5,20 +5,22 @@
 template< class TCommandType > 
 int32 TTaskQueue< TCommandType >::Main()
 {
+	if (TaskQueue.size() == 0 || !GBackend)
+	{
+		return 0;
+	}
+
+	GBackend->RenderBegin();
+
 	while (TaskQueue.size() > 0)
 	{
-		if (!GBackend)
-		{
-			break;
-		}
-
-		//cout << CommandNames.front() << endl;
 		TaskQueue.front()(*GBackend->GetMainGraphicsCommandList());
-		//cout << CommandNames.front() << endl;
 
 		TaskQueue.pop();
 		CommandNames.pop();
 	}
+
+	GBackend->RenderFinish();
 
 	return 0;
 }
@@ -27,5 +29,6 @@ template< class TCommandType >
 void TTaskQueue< TCommandType >::AddRenderCommand(String&& CommandName, TCommandType&& CommandType)
 {
 	TaskQueue.emplace(CommandType);
-	CommandNames.emplace(std::move( CommandName ));
+	CommandNames.emplace(std::move(CommandName));
 }
+

@@ -53,7 +53,7 @@ public:
 		VertexBufferSize = InSize;
 	}
 
-	const uint8 const* GetRawVertexBuffer() const
+	const uint8* GetRawVertexBuffer() const
 	{
 		return RawBuffer;
 	}
