@@ -265,140 +265,149 @@ namespace SIMDMath
             return M;
         }
 
-        // General 4x4 Matrix Inverse using Cramer's rule
-        static Matrix4x4 Inverse(const Matrix4x4& M)
+        // Helpers for 3D cross/dot in SIMD (w is ignored)
+        static inline __m128 Cross3(__m128 a, __m128 b)
         {
-            const float* m = &M.m[0][0];
-            float inv[16];
+            const __m128 a_yzx = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 0, 2, 1));
+            const __m128 b_yzx = _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 0, 2, 1));
+            const __m128 c = _mm_sub_ps(_mm_mul_ps(a, b_yzx), _mm_mul_ps(a_yzx, b));
+            return _mm_shuffle_ps(c, c, _MM_SHUFFLE(3, 0, 2, 1));
+        }
 
-            inv[0] = m[5]  * m[10] * m[15] - 
-                     m[5]  * m[11] * m[14] - 
-                     m[9]  * m[6]  * m[15] + 
-                     m[9]  * m[7]  * m[14] +
-                     m[13] * m[6]  * m[11] - 
-                     m[13] * m[7]  * m[10];
+        static inline float Dot3(__m128 a, __m128 b)
+        {
+            const __m128 mul = _mm_mul_ps(a, b);
+            const __m128 shuf1 = _mm_shuffle_ps(mul, mul, _MM_SHUFFLE(2, 1, 0, 3));
+            const __m128 sum1 = _mm_add_ps(mul, shuf1);
+            const __m128 shuf2 = _mm_shuffle_ps(sum1, sum1, _MM_SHUFFLE(1, 0, 3, 2));
+            const __m128 sum2 = _mm_add_ps(sum1, shuf2);
+            return _mm_cvtss_f32(sum2);
+        }
 
-            inv[4] = -m[4]  * m[10] * m[15] + 
-                      m[4]  * m[11] * m[14] + 
-                      m[8]  * m[6]  * m[15] - 
-                      m[8]  * m[7]  * m[14] - 
-                      m[12] * m[6]  * m[11] + 
-                      m[12] * m[7]  * m[10];
+        static inline bool IsAffine(const Matrix4x4& M, float eps = 1e-6f)
+        {
+            return (fabsf(M._14) < eps) && (fabsf(M._24) < eps) && (fabsf(M._34) < eps) && (fabsf(M._44 - 1.0f) < eps);
+        }
 
-            inv[8] = m[4]  * m[9]  * m[15] - 
-                     m[4]  * m[11] * m[13] - 
-                     m[8]  * m[5]  * m[15] + 
-                     m[8]  * m[7]  * m[13] + 
-                     m[12] * m[5]  * m[11] - 
-                     m[12] * m[7]  * m[9];
+        // Affine inverse (row-vector convention):
+        // [ R  0 ]^{-1} = [ R^{-1}  0 ]
+        // [ T  1 ]        [ -T*R^{-1} 1 ]
+        static Matrix4x4 InverseAffine(const Matrix4x4& M)
+        {
+            // Columns of R (3x3)
+            const __m128 c0 = _mm_set_ps(0.0f, M._31, M._21, M._11);
+            const __m128 c1 = _mm_set_ps(0.0f, M._32, M._22, M._12);
+            const __m128 c2 = _mm_set_ps(0.0f, M._33, M._23, M._13);
 
-            inv[12] = -m[4]  * m[9]  * m[14] + 
-                       m[4]  * m[10] * m[13] +
-                       m[8]  * m[5]  * m[14] - 
-                       m[8]  * m[6]  * m[13] - 
-                       m[12] * m[5]  * m[10] + 
-                       m[12] * m[6]  * m[9];
+            __m128 ic0 = Cross3(c1, c2);
+            __m128 ic1 = Cross3(c2, c0);
+            __m128 ic2 = Cross3(c0, c1);
 
-            inv[1] = -m[1]  * m[10] * m[15] + 
-                      m[1]  * m[11] * m[14] + 
-                      m[9]  * m[2]  * m[15] - 
-                      m[9]  * m[3]  * m[14] - 
-                      m[13] * m[2]  * m[11] + 
-                      m[13] * m[3]  * m[10];
-
-            inv[5] = m[0]  * m[10] * m[15] - 
-                     m[0]  * m[11] * m[14] - 
-                     m[8]  * m[2]  * m[15] + 
-                     m[8]  * m[3]  * m[14] + 
-                     m[12] * m[2]  * m[11] - 
-                     m[12] * m[3]  * m[10];
-
-            inv[9] = -m[0]  * m[9]  * m[15] + 
-                      m[0]  * m[11] * m[13] + 
-                      m[8]  * m[1]  * m[15] - 
-                      m[8]  * m[3]  * m[13] - 
-                      m[12] * m[1]  * m[11] + 
-                      m[12] * m[3]  * m[9];
-
-            inv[13] = m[0]  * m[9]  * m[14] - 
-                      m[0]  * m[10] * m[13] - 
-                      m[8]  * m[1]  * m[14] + 
-                      m[8]  * m[2]  * m[13] + 
-                      m[12] * m[1]  * m[10] - 
-                      m[12] * m[2]  * m[9];
-
-            inv[2] = m[1]  * m[6] * m[15] - 
-                     m[1]  * m[7] * m[14] - 
-                     m[5]  * m[2] * m[15] + 
-                     m[5]  * m[3] * m[14] + 
-                     m[13] * m[2] * m[7] - 
-                     m[13] * m[3] * m[6];
-
-            inv[6] = -m[0]  * m[6] * m[15] + 
-                      m[0]  * m[7] * m[14] + 
-                      m[4]  * m[2] * m[15] - 
-                      m[4]  * m[3] * m[14] - 
-                      m[12] * m[2] * m[7] + 
-                      m[12] * m[3] * m[6];
-
-            inv[10] = m[0]  * m[5] * m[15] - 
-                      m[0]  * m[7] * m[13] - 
-                      m[4]  * m[1] * m[15] + 
-                      m[4]  * m[3] * m[13] + 
-                      m[12] * m[1] * m[7] - 
-                      m[12] * m[3] * m[5];
-
-            inv[14] = -m[0]  * m[5] * m[14] + 
-                       m[0]  * m[6] * m[13] + 
-                       m[4]  * m[1] * m[14] - 
-                       m[4]  * m[2] * m[13] - 
-                       m[12] * m[1] * m[6] + 
-                       m[12] * m[2] * m[5];
-
-            inv[3] = -m[1] * m[6] * m[11] + 
-                      m[1] * m[7] * m[10] + 
-                      m[5] * m[2] * m[11] - 
-                      m[5] * m[3] * m[10] - 
-                      m[9] * m[2] * m[7] + 
-                      m[9] * m[3] * m[6];
-
-            inv[7] = m[0] * m[6] * m[11] - 
-                     m[0] * m[7] * m[10] - 
-                     m[4] * m[2] * m[11] + 
-                     m[4] * m[3] * m[10] + 
-                     m[8] * m[2] * m[7] - 
-                     m[8] * m[3] * m[6];
-
-            inv[11] = -m[0] * m[5] * m[11] + 
-                       m[0] * m[7] * m[9] + 
-                       m[4] * m[1] * m[11] - 
-                       m[4] * m[3] * m[9] - 
-                       m[8] * m[1] * m[7] + 
-                       m[8] * m[3] * m[5];
-
-            inv[15] = m[0] * m[5] * m[10] - 
-                      m[0] * m[6] * m[9] - 
-                      m[4] * m[1] * m[10] + 
-                      m[4] * m[2] * m[9] + 
-                      m[8] * m[1] * m[6] - 
-                      m[8] * m[2] * m[5];
-
-            float det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
-
+            const float det = Dot3(c0, ic0);
             if (fabsf(det) < 1e-10f)
             {
                 return Identity();
             }
 
-            float invDet = 1.0f / det;
+            const __m128 invDet = _mm_set1_ps(1.0f / det);
+            ic0 = _mm_mul_ps(ic0, invDet);
+            ic1 = _mm_mul_ps(ic1, invDet);
+            ic2 = _mm_mul_ps(ic2, invDet);
 
-            Matrix4x4 R;
-            for (int i = 0; i < 16; i++)
-            {
-                (&R.m[0][0])[i] = inv[i] * invDet;
-            }
+            alignas(16) float v0[4];
+            alignas(16) float v1[4];
+            alignas(16) float v2[4];
+            _mm_store_ps(v0, ic0);
+            _mm_store_ps(v1, ic1);
+            _mm_store_ps(v2, ic2);
+
+            Matrix4x4 R = Identity();
+            // Set columns into row-major storage
+            R._11 = v0[0]; R._21 = v0[1]; R._31 = v0[2];
+            R._12 = v1[0]; R._22 = v1[1]; R._32 = v1[2];
+            R._13 = v2[0]; R._23 = v2[1]; R._33 = v2[2];
+
+            // Translation row: -T * R^{-1}
+            const __m128 T = _mm_set_ps(0.0f, M._43, M._42, M._41);
+            const float tx = Dot3(T, ic0);
+            const float ty = Dot3(T, ic1);
+            const float tz = Dot3(T, ic2);
+            R._41 = -tx;
+            R._42 = -ty;
+            R._43 = -tz;
+            R._44 = 1.0f;
 
             return R;
+        }
+
+        // General 4x4 inverse via Gauss-Jordan elimination (SIMD row ops)
+        static Matrix4x4 InverseGeneral(const Matrix4x4& M)
+        {
+            __m128 rowM[4] = { M.r[0], M.r[1], M.r[2], M.r[3] };
+            Matrix4x4 I = Identity();
+            __m128 rowI[4] = { I.r[0], I.r[1], I.r[2], I.r[3] };
+
+            alignas(16) float tmp[4];
+            for (int i = 0; i < 4; ++i)
+            {
+                // Pivot selection
+                int pivot = i;
+                float pivotVal = 0.0f;
+                for (int r = i; r < 4; ++r)
+                {
+                    _mm_store_ps(tmp, rowM[r]);
+                    const float val = fabsf(tmp[i]);
+                    if (val > pivotVal)
+                    {
+                        pivotVal = val;
+                        pivot = r;
+                    }
+                }
+
+                if (pivotVal < 1e-10f)
+                {
+                    return Identity();
+                }
+
+                if (pivot != i)
+                {
+                    std::swap(rowM[i], rowM[pivot]);
+                    std::swap(rowI[i], rowI[pivot]);
+                }
+
+                _mm_store_ps(tmp, rowM[i]);
+                const float pivotElem = tmp[i];
+                const __m128 invPivot = _mm_set1_ps(1.0f / pivotElem);
+                rowM[i] = _mm_mul_ps(rowM[i], invPivot);
+                rowI[i] = _mm_mul_ps(rowI[i], invPivot);
+
+                for (int r = 0; r < 4; ++r)
+                {
+                    if (r == i) continue;
+                    _mm_store_ps(tmp, rowM[r]);
+                    const float factor = tmp[i];
+                    const __m128 f = _mm_set1_ps(factor);
+                    rowM[r] = _mm_sub_ps(rowM[r], _mm_mul_ps(f, rowM[i]));
+                    rowI[r] = _mm_sub_ps(rowI[r], _mm_mul_ps(f, rowI[i]));
+                }
+            }
+
+            Matrix4x4 R;
+            R.r[0] = rowI[0];
+            R.r[1] = rowI[1];
+            R.r[2] = rowI[2];
+            R.r[3] = rowI[3];
+            return R;
+        }
+
+        // Inverse selector: use affine fast-path when possible, otherwise general
+        static Matrix4x4 Inverse(const Matrix4x4& M)
+        {
+            if (IsAffine(M))
+            {
+                return InverseAffine(M);
+            }
+            return InverseGeneral(M);
         }
 
         // Matrix multiplication (A * B)
@@ -406,15 +415,22 @@ namespace SIMDMath
         inline Matrix4x4 operator*(const Matrix4x4& B) const
         {
             Matrix4x4 res;
+            const __m128 b0 = B.r[0];
+            const __m128 b1 = B.r[1];
+            const __m128 b2 = B.r[2];
+            const __m128 b3 = B.r[3];
+
             for (int i = 0; i < 4; i++)
             {
-                for (int j = 0; j < 4; j++)
-                {
-                    res.m[i][j] = m[i][0] * B.m[0][j] +
-                                  m[i][1] * B.m[1][j] +
-                                  m[i][2] * B.m[2][j] +
-                                  m[i][3] * B.m[3][j];
-                }
+                const __m128 a = r[i];
+                const __m128 a0 = _mm_shuffle_ps(a, a, _MM_SHUFFLE(0, 0, 0, 0));
+                const __m128 a1 = _mm_shuffle_ps(a, a, _MM_SHUFFLE(1, 1, 1, 1));
+                const __m128 a2 = _mm_shuffle_ps(a, a, _MM_SHUFFLE(2, 2, 2, 2));
+                const __m128 a3 = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 3, 3, 3));
+
+                const __m128 r01 = _mm_add_ps(_mm_mul_ps(a0, b0), _mm_mul_ps(a1, b1));
+                const __m128 r23 = _mm_add_ps(_mm_mul_ps(a2, b2), _mm_mul_ps(a3, b3));
+                res.r[i] = _mm_add_ps(r01, r23);
             }
             return res;
         }
@@ -423,13 +439,15 @@ namespace SIMDMath
         static Matrix4x4 Transpose(const Matrix4x4& M)
         {
             Matrix4x4 R;
-            for (int i = 0; i < 4; i++)
-            {
-                for (int j = 0; j < 4; j++)
-                {
-                    R.m[i][j] = M.m[j][i];
-                }
-            }
+            __m128 r0 = M.r[0];
+            __m128 r1 = M.r[1];
+            __m128 r2 = M.r[2];
+            __m128 r3 = M.r[3];
+            _MM_TRANSPOSE4_PS(r0, r1, r2, r3);
+            R.r[0] = r0;
+            R.r[1] = r1;
+            R.r[2] = r2;
+            R.r[3] = r3;
             return R;
         }
     };
@@ -506,32 +524,49 @@ namespace SIMDMath
     // Transform a point (w=1) by a matrix
     inline Vector3 TransformPoint(const Vector3& v, const Matrix4x4& M)
     {
-        Vector3 result;
-        result.x = v.x * M._11 + v.y * M._21 + v.z * M._31 + M._41;
-        result.y = v.x * M._12 + v.y * M._22 + v.z * M._32 + M._42;
-        result.z = v.x * M._13 + v.y * M._23 + v.z * M._33 + M._43;
-        return result;
+        const __m128 vec = _mm_set_ps(1.0f, v.z, v.y, v.x);
+        const __m128 x = _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(0, 0, 0, 0));
+        const __m128 y = _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(1, 1, 1, 1));
+        const __m128 z = _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(2, 2, 2, 2));
+        const __m128 w = _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(3, 3, 3, 3));
+
+        const __m128 r01 = _mm_add_ps(_mm_mul_ps(x, M.r[0]), _mm_mul_ps(y, M.r[1]));
+        const __m128 r23 = _mm_add_ps(_mm_mul_ps(z, M.r[2]), _mm_mul_ps(w, M.r[3]));
+        const __m128 res = _mm_add_ps(r01, r23);
+
+        alignas(16) float out[4];
+        _mm_store_ps(out, res);
+        return Vector3(out[0], out[1], out[2]);
     }
 
     // Transform a vector (w=0) by a matrix (ignores translation)
     inline Vector3 TransformVector(const Vector3& v, const Matrix4x4& M)
     {
-        Vector3 result;
-        result.x = v.x * M._11 + v.y * M._21 + v.z * M._31;
-        result.y = v.x * M._12 + v.y * M._22 + v.z * M._32;
-        result.z = v.x * M._13 + v.y * M._23 + v.z * M._33;
-        return result;
+        const __m128 vec = _mm_set_ps(0.0f, v.z, v.y, v.x);
+        const __m128 x = _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(0, 0, 0, 0));
+        const __m128 y = _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(1, 1, 1, 1));
+        const __m128 z = _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(2, 2, 2, 2));
+
+        const __m128 r01 = _mm_add_ps(_mm_mul_ps(x, M.r[0]), _mm_mul_ps(y, M.r[1]));
+        const __m128 res = _mm_add_ps(r01, _mm_mul_ps(z, M.r[2]));
+
+        alignas(16) float out[4];
+        _mm_store_ps(out, res);
+        return Vector3(out[0], out[1], out[2]);
     }
 
     // Transform Vector4 by matrix
     inline Vector4 Transform(const Vector4& v, const Matrix4x4& M)
     {
-        Vector4 result;
-        result.x = v.x * M._11 + v.y * M._21 + v.z * M._31 + v.w * M._41;
-        result.y = v.x * M._12 + v.y * M._22 + v.z * M._32 + v.w * M._42;
-        result.z = v.x * M._13 + v.y * M._23 + v.z * M._33 + v.w * M._43;
-        result.w = v.x * M._14 + v.y * M._24 + v.z * M._34 + v.w * M._44;
-        return result;
+        const __m128 vec = v.mmvalue;
+        const __m128 x = _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(0, 0, 0, 0));
+        const __m128 y = _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(1, 1, 1, 1));
+        const __m128 z = _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(2, 2, 2, 2));
+        const __m128 w = _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(3, 3, 3, 3));
+
+        const __m128 r01 = _mm_add_ps(_mm_mul_ps(x, M.r[0]), _mm_mul_ps(y, M.r[1]));
+        const __m128 r23 = _mm_add_ps(_mm_mul_ps(z, M.r[2]), _mm_mul_ps(w, M.r[3]));
+        return Vector4(_mm_add_ps(r01, r23));
     }
 
 } // namespace SIMDMath
